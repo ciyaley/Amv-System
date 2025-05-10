@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "backend",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-05-09",
+  // "compatibility_flags": [
+  //   "nodejs_compat"
+  // ],
+   "vars": {
+     "MY_VAR": "my-variable",
+     "JWT_SECRET" : "dev_super_secret_32chars_minimum"
+   },
+   "kv_namespaces": [
+    {
+      "binding": "AMV_SPACE_KEY",
+      "id": "1128d74353604866b9db65da898588bc"
+    }
+   ],
+  // "r2_buckets": [
+  //   {
+  //     "binding": "MY_BUCKET",
+  //     "bucket_name": "my-bucket"
+  //   }
+  // ],
+  // "d1_databases": [
+  //   {
+  //     "binding": "MY_DB",
+  //     "database_name": "my-database",
+  //     "database_id": ""
+  //   }
+  // ],
+  // "ai": {
+  //   "binding": "AI"
+  // },
+  // "observability": {
+  //   "enabled": true,
+  //   "head_sampling_rate": 1
+  // }
+}
