@@ -1,45 +1,59 @@
 // frontend/app/components/GeneralSettings.tsx
 "use client";
 
-import { useCanvasStore } from "../hooks/useCanvas"; // 後出予定
+import { useCanvasStore } from "@/app/hooks/useCanvas";
 
 export const GeneralSettings = () => {
-  const { width, height, zoom, setWidth, setHeight, setZoom } = useCanvasStore();
+  const { width, height, zoom, setWidth, setHeight, setZoom, resetPan } =
+    useCanvasStore();
+
   return (
     <div role="tabpanel" className="space-y-4">
-      <label>
-        作業エリア幅:
+      <div className="flex items-center space-x-2">
+        <label htmlFor="canvas-width">幅:</label>
         <input
+          id="canvas-width"
           type="number"
           value={width}
           onChange={(e) => setWidth(+e.target.value)}
-          className="ml-2 w-24 p-1 border rounded text-black"
+          className="w-24 p-1 border rounded text-black"
         />
         px
-      </label>
-      <label>
-        作業エリア高:
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <label htmlFor="canvas-height">高さ:</label>
         <input
+          id="canvas-height"
           type="number"
           value={height}
           onChange={(e) => setHeight(+e.target.value)}
-          className="ml-2 w-24 p-1 border rounded text-black"
+          className="w-24 p-1 border rounded text-black"
         />
         px
-      </label>
-      <label>
-        初期ズーム倍率:
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <label htmlFor="canvas-zoom">初期ズーム:</label>
         <input
+          id="canvas-zoom"
           type="number"
           step="0.1"
           min="0.1"
           max="5"
           value={zoom}
           onChange={(e) => setZoom(+e.target.value)}
-          className="ml-2 w-20 p-1 border rounded text-black"
+          className="w-20 p-1 border rounded text-black"
         />
         倍
-      </label>
+      </div>
+
+      <button
+        onClick={resetPan}
+        className="px-3 py-1 bg-slate-600 rounded hover:bg-slate-500"
+      >
+        初期位置に戻す
+      </button>
     </div>
   );
 };
