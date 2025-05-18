@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { useEncryptionStore } from "./useEncryptionStore";
 
 interface AuthState {
   isLoggedIn: boolean;
@@ -63,6 +64,6 @@ export const useAuth = create<AuthState>((set) => ({
 
   logout: () => {
     set({ isLoggedIn: false, user: null });
-    // 将来ここで /api/auth/logout を呼ぶとより堅牢に
+    useEncryptionStore.getState().clearPassword();
   },
 }));
