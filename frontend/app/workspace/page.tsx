@@ -7,12 +7,13 @@ import { SettingsModal } from "@/app/components/SettingsModal";
 import { LayoutSelector } from "@/app/components/ToolSelector";
 import { useAuth } from "@/app/hooks/useAuth";
 import { useModalStore } from "@/app/hooks/useModal";
-
+import { useLoadAfterLogin } from "@/app/hooks/useLoadAfterLogin";
 import { WorkspaceCanvas } from "./WorkspaceCanvas";
 
 export default function WorkspacePage() {
   const { autoLogin, user } = useAuth();
   const openSettings = useModalStore((s) => s.open);
+  useLoadAfterLogin();   // ← 追加
 
   useEffect(() => {
     autoLogin()

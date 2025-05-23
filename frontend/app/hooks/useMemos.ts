@@ -1,8 +1,9 @@
+//useMemos.ts
 "use client";
 
 import { create } from "zustand";
 import { nanoid } from "nanoid";
-import { saveEncrypted, loadEncrypted } from "../../utils/fileAccess"; // ← 絶対パスで正しく
+import { saveEncrypted, loadEncrypted } from "../../utils/fileAccess";
 
 export interface MemoData {
   id: string;
@@ -16,6 +17,7 @@ export interface MemoData {
 
 interface MemoState {
   memos: MemoData[];
+  setMemos: (list: MemoData[]) => void;
   addMemo: (x: number, y: number) => void;
   updateMemo: (id: string, data: Partial<MemoData>) => void;
   bringToFront: (id: string) => void;
@@ -25,30 +27,29 @@ interface MemoState {
 }
 
 export const useMemos = create<MemoState>((set, get) => {
-  // ▶︎ 起動時の復元
+  // 起動時に前回メモを復元
   (async () => {
     try {
-      const loaded = await loadEncrypted<{ memos: MemoData[] }>("memo");
-      if (loaded?.memos) set({ memos: loaded.memos });
+      const data = await loadEncrypted<{ memos: MemoData[] }>("memo");
+      if (data?.memos) set({ memos: data.memos });
     } catch (e) {
       console.error("memo load error", e);
     }
   })();
 
-  // ZIndex を 1 から順に再振り直す関数
   const normalize = (list: MemoData[]) =>
     list
       .sort((a, b) => a.zIndex - b.zIndex)
       .map((m, i) => ({ ...m, zIndex: i + 1 }));
 
-  // 保存ヘルパー
   const persist = () => {
-    const current = get().memos;
-    saveEncrypted("memo", { memos: current }).catch(console.error);
+    const { memos } = get();
+    saveEncrypted("memo", { memos }).catch(console.error);
   };
 
   return {
     memos: [],
+    setMemos: (list) => set({ memos: list }),
 
     addMemo: (x, y) => {
       set((s) => {
@@ -87,9 +88,7 @@ export const useMemos = create<MemoState>((set, get) => {
 
     sendToBack: (id) => {
       set((s) => ({
-        memos: normalize(
-          s.memos.map((m) => (m.id === id ? { ...m, zIndex: 0 } : m))
-        ),
+        memos: normalize(s.memos.map((m) => (m.id === id ? { ...m, zIndex: 0 } : m))),
       }));
       persist();
     },

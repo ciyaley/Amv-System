@@ -11,6 +11,7 @@
   "dependencies": {
     "@headlessui/react": "^2.2.2",
     "@headlessui/tailwindcss": "^0.2.2",
+    "idb": "^8.0.3",
     "lucide-react": "^0.508.0",
     "next": "15.3.1",
     "react": "^19.0.0",
