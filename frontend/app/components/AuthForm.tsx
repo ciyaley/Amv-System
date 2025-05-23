@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/app/hooks/useAuth";
 import { useModalStore } from "@/app/hooks/useModal";
 import { toast } from "sonner";
+import { useEncryptionStore } from "@/app/hooks/useEncryptionStore";
 
 type AuthFormProps = {
   mode: "login" | "register";
@@ -12,6 +13,7 @@ type AuthFormProps = {
 export const AuthForm = ({ mode }: AuthFormProps) => {
   const { login, register } = useAuth();
   const closeModal = useModalStore((state) => state.close);
+  const setEncPw = useEncryptionStore((s) => s.setPassword);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,9 +25,11 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
     try {
       if (mode === "login") {
         await login(email, password);
+        setEncPw(password);
         toast.success("ログイン成功");
       } else {
         await register(email, password);
+        setEncPw(password);
         toast.success("登録成功");
       }
       closeModal();
