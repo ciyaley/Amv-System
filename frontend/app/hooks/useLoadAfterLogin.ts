@@ -4,22 +4,21 @@
 import { useEffect } from "react";
 import { useAuth } from "@/app/hooks/useAuth";
 import { useEncryptionStore } from "@/app/hooks/useEncryptionStore";
-import { loadEncrypted, getStoredDir, requestDirectory } from "../../utils/fileAccess";
-import { useMemos } from "@/app/hooks/useMemos";
+import { loadWorkspace, getStoredDir, requestDirectory } from "../../utils/fileAccess";
+import { useMemos } from "./useMemos";
 import { useCanvasStore } from "./useCanvas";
 import { toast } from "sonner";
 
 export const useLoadAfterLogin = () => {
-  const { user } = useAuth();
+  const { isLoggedIn } = useAuth();
   const password = useEncryptionStore((s) => s.password);
-  const setMemos = useMemos((s) => s.setMemos);
+  const loadMemosFromDisk = useMemos((s) => s.loadMemosFromDisk);
   const setLayout = useCanvasStore((s) => s.setLayout);
 
   useEffect(() => {
     (async () => {
-      if (!user || !password) return;
+      if (!isLoggedIn || !password) return;
 
-      
       // ディレクトリハンドルを確認
       if (!await getStoredDir()) {
         try {
@@ -30,21 +29,23 @@ export const useLoadAfterLogin = () => {
         }
       }
 
-      // ▼ メモ復元
+      // ▼ メモ復元（新形式）
       try {
-        const memoData = await loadEncrypted<{ memos: any[] }>("memo");
-        if (memoData?.memos) setMemos(memoData.memos);
+        await loadMemosFromDisk();
+        toast.success("メモを復元しました");
       } catch (e) {
         console.error("memo load after login error", e);
       }
 
-      // ▼ レイアウト復元
+      // ▼ ワークスペース設定復元
       try {
-        const layout = await loadEncrypted<{ width: number; height: number; zoom: number; offsetX: number; offsetY: number }>("layout");
-        if (layout) setLayout(layout);
+        const workspace = await loadWorkspace();
+        if (workspace?.canvas) {
+          setLayout(workspace.canvas);
+        }
       } catch (e) {
-        console.error("layout load after login error", e);
+        console.error("workspace load after login error", e);
       }
     })();
-  }, [user, password, setMemos, setLayout]);
+  }, [isLoggedIn, password, loadMemosFromDisk, setLayout]);
 };

@@ -53,6 +53,7 @@ export const AppearanceSettings = () => {
           <p className="mb-2 text-sm text-gray-700 dark:text-gray-300">
             プレビュー:
           </p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={previewUrl}
             alt="背景プレビュー"

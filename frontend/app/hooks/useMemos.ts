@@ -3,74 +3,156 @@
 
 import { create } from "zustand";
 import { nanoid } from "nanoid";
-import { saveEncrypted, loadEncrypted } from "../../utils/fileAccess";
+import { saveIndividualMemo, loadAllMemos, deleteMemoFile } from "../../utils/fileAccess";
+
+export interface MemoPosition {
+  x: number;
+  y: number;
+}
+
+export interface MemoDecoration {
+  start: number;
+  end: number;
+  type: 'color' | 'bold' | 'italic' | 'underline';
+  value?: string;
+}
+
+export interface MemoAppearance {
+  backgroundColor?: string;
+  borderColor?: string;
+  cornerRadius?: number;
+  shadowEnabled?: boolean;
+}
 
 export interface MemoData {
   id: string;
+  type: 'memo';
+  title: string;
+  text: string;
   x: number;
   y: number;
   w: number;
   h: number;
-  text: string;
   zIndex: number;
+  tags?: string[];
+  created: string;
+  updated: string;
+  decorations?: MemoDecoration[];
+  appearance?: MemoAppearance;
+  linkedUrls?: string[];
+  linkedImages?: string[];
 }
 
 interface MemoState {
   memos: MemoData[];
   setMemos: (list: MemoData[]) => void;
-  addMemo: (x: number, y: number) => void;
+  createMemo: (position?: MemoPosition) => void;
   updateMemo: (id: string, data: Partial<MemoData>) => void;
+  updateMemoPosition: (id: string, x: number, y: number) => void;
+  updateMemoSize: (id: string, w: number, h: number) => void;
+  deleteMemo: (id: string) => void;
   bringToFront: (id: string) => void;
   sendToBack: (id: string) => void;
   moveUp: (id: string) => void;
   moveDown: (id: string) => void;
+  loadMemosFromDisk: () => Promise<void>;
 }
 
 export const useMemos = create<MemoState>((set, get) => {
-  // 起動時に前回メモを復元
-  (async () => {
-    try {
-      const data = await loadEncrypted<{ memos: MemoData[] }>("memo");
-      if (data?.memos) set({ memos: data.memos });
-    } catch (e) {
-      console.error("memo load error", e);
-    }
-  })();
-
   const normalize = (list: MemoData[]) =>
     list
       .sort((a, b) => a.zIndex - b.zIndex)
       .map((m, i) => ({ ...m, zIndex: i + 1 }));
 
-  const persist = () => {
-    const { memos } = get();
-    saveEncrypted("memo", { memos }).catch(console.error);
+  const generateTitle = (text: string): string => {
+    // テキストの最初の行または最初の20文字をタイトルとして使用
+    const firstLine = text.split('\n')[0].trim();
+    return firstLine.slice(0, 20) || '新しいメモ';
+  };
+
+  const persistMemo = async (memo: MemoData) => {
+    try {
+      await saveIndividualMemo(memo);
+    } catch (error) {
+      console.error("Failed to save memo:", error);
+    }
   };
 
   return {
     memos: [],
+    
     setMemos: (list) => set({ memos: list }),
 
-    addMemo: (x, y) => {
-      set((s) => {
-        const base = s.memos.length
-          ? Math.max(...s.memos.map((m) => m.zIndex))
-          : 0;
-        return {
-          memos: normalize([
-            ...s.memos,
-            { id: nanoid(), x, y, w: 240, h: 160, text: "", zIndex: base + 1 },
-          ]),
-        };
-      });
-      persist();
+    createMemo: (position) => {
+      const now = new Date().toISOString();
+      const newMemo: MemoData = {
+        id: `memo_${nanoid()}`,
+        type: 'memo',
+        title: '新しいメモ',
+        text: '',
+        x: position?.x ?? Math.random() * 500,
+        y: position?.y ?? Math.random() * 300,
+        w: 240,
+        h: 160,
+        zIndex: get().memos.length + 1,
+        tags: [],
+        created: now,
+        updated: now,
+        appearance: {
+          backgroundColor: '#ffeaa7',
+          borderColor: '#fdcb6e',
+          cornerRadius: 8,
+          shadowEnabled: true
+        }
+      };
+
+      set((s) => ({
+        memos: [...s.memos, newMemo]
+      }));
+
+      persistMemo(newMemo);
     },
 
     updateMemo: (id, data) => {
+      const memo = get().memos.find(m => m.id === id);
+      if (!memo) return;
+
+      const updatedMemo = {
+        ...memo,
+        ...data,
+        updated: new Date().toISOString()
+      };
+
+      // タイトルが空の場合、テキストから自動生成
+      if (data.text !== undefined && !data.title) {
+        updatedMemo.title = generateTitle(data.text);
+      }
+
       set((s) => ({
-        memos: s.memos.map((m) => (m.id === id ? { ...m, ...data } : m)),
+        memos: s.memos.map((m) => (m.id === id ? updatedMemo : m)),
       }));
-      persist();
+
+      persistMemo(updatedMemo);
+    },
+
+    updateMemoPosition: (id, x, y) => {
+      get().updateMemo(id, { x, y });
+    },
+
+    updateMemoSize: (id, w, h) => {
+      get().updateMemo(id, { w, h });
+    },
+
+    deleteMemo: async (id) => {
+      set((s) => ({
+        memos: s.memos.filter(m => m.id !== id)
+      }));
+
+      try {
+        await deleteMemoFile(id);
+      } catch (error) {
+        console.error("Failed to delete memo file:", error);
+      }
     },
 
     bringToFront: (id) => {
@@ -83,14 +165,18 @@ export const useMemos = create<MemoState>((set, get) => {
           )
         ),
       }));
-      persist();
+      
+      const memo = get().memos.find(m => m.id === id);
+      if (memo) persistMemo(memo);
     },
 
     sendToBack: (id) => {
       set((s) => ({
         memos: normalize(s.memos.map((m) => (m.id === id ? { ...m, zIndex: 0 } : m))),
       }));
-      persist();
+      
+      const memo = get().memos.find(m => m.id === id);
+      if (memo) persistMemo(memo);
     },
 
     moveUp: (id) => {
@@ -105,7 +191,9 @@ export const useMemos = create<MemoState>((set, get) => {
         }
         return { memos: normalize(sorted) };
       });
-      persist();
+      
+      const memo = get().memos.find(m => m.id === id);
+      if (memo) persistMemo(memo);
     },
 
     moveDown: (id) => {
@@ -120,7 +208,18 @@ export const useMemos = create<MemoState>((set, get) => {
         }
         return { memos: normalize(sorted) };
       });
-      persist();
+      
+      const memo = get().memos.find(m => m.id === id);
+      if (memo) persistMemo(memo);
     },
+
+    loadMemosFromDisk: async () => {
+      try {
+        const memos = await loadAllMemos();
+        set({ memos });
+      } catch (error) {
+        console.error("Failed to load memos:", error);
+      }
+    }
   };
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Cog } from "lucide-react";
 import { toast } from "sonner";
 import { SettingsModal } from "@/app/components/SettingsModal";
@@ -11,27 +11,26 @@ import { useLoadAfterLogin } from "@/app/hooks/useLoadAfterLogin";
 import { WorkspaceCanvas } from "./WorkspaceCanvas";
 
 export default function WorkspacePage() {
-  const { autoLogin, user } = useAuth();
+  const { checkAutoLogin, isLoggedIn } = useAuth();
   const openSettings = useModalStore((s) => s.open);
   useLoadAfterLogin();   // ← 追加
 
   useEffect(() => {
-    autoLogin()
+    checkAutoLogin()
       .then(() => {
-        if (user) toast.success("自動ログイン成功");
+        if (isLoggedIn) toast.success("自動ログイン成功");
       })
       .catch(() => {
-        toast.warning("未ログイン状態です");
+        toast.info("未ログイン状態です");
       });
-  }, []);
+  }, [checkAutoLogin, isLoggedIn]);
 
   return (
     <>
       <SettingsModal />
 
       {/* 全画面ワークスペース */}
-      <div className="relative w-screen h-screen"
-      />
+      <div className="relative w-screen h-screen">
         {/* ログ管理パネル（fixed） */}
         <aside className="fixed left-0 top-0 bottom-0 w-64 bg-slate-800 p-4 overflow-y-auto z-10">
           <h2 className="text-lg font-bold mb-4 text-white">ログ管理</h2>
@@ -55,7 +54,7 @@ export default function WorkspacePage() {
 
         {/* ツール選択バー（fixed） */}
         <LayoutSelector className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10"/>
-      
+      </div>
     </>
   );
 }

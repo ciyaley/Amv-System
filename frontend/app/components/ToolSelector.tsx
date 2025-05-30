@@ -11,14 +11,14 @@ const tools: {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   // 必要なら任意のアクションを定義
-  action?: (centerX: number, centerY: number) => void;
+  action?: () => void;
 }[] = [
   {
     id: "memo",
     label: "メモ",
     icon: SquarePen,
     // centerX/centerY は handleToolClick で渡される
-    action: (cx, cy) => {
+    action: () => {
       // addMemo は handleToolClick の中で bind される
       /* placeholder */
     },
@@ -30,7 +30,7 @@ export const LayoutSelector: React.FC<{ className?: string }> = ({
   className = "",
 }) => {
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
-  const addMemo = useMemos((s) => s.addMemo);
+  const createMemo = useMemos((s) => s.createMemo);
   const { offsetX, offsetY, zoom } = useCanvasStore();
 
   // 中心キャンバス座標を計算
@@ -50,12 +50,12 @@ export const LayoutSelector: React.FC<{ className?: string }> = ({
 
     // デフォルトのメモ追加アクション
     if (toolId === "memo") {
-      addMemo(cx, cy);
+      createMemo({ x: cx, y: cy });
     }
 
     // カスタム action があれば呼び出し
     if (tool.action) {
-      tool.action(cx, cy);
+      tool.action();
     }
   };
 

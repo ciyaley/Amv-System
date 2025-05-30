@@ -1,39 +1,26 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "backend",
+  "name": "amv-system-backend",
   "main": "src/index.ts",
   "compatibility_date": "2025-05-09",
-  // "compatibility_flags": [
-  //   "nodejs_compat"
-  // ],
-   "vars": {
-     "MY_VAR": "my-variable",
-     "JWT_SECRET" : "dev_super_secret_32chars_minimum"
-   },
-   "kv_namespaces": [
+  "vars": {
+    "JWT_SECRET": "dev_super_secret_32chars_minimum_for_amv_system",
+    "SITE_URL": "http://localhost:3000"
+  },
+  "kv_namespaces": [
     {
-      "binding": "AMV_SPACE_KEY",
+      "binding": "KV_NAMESPACE_AUTH",
       "id": "1128d74353604866b9db65da898588bc"
+    },
+    {
+      "binding": "KV_NAMESPACE_TOKEN_BLACKLIST",
+      "id": "token_blacklist_namespace_id_to_be_created"
     }
-   ],
-  // "r2_buckets": [
-  //   {
-  //     "binding": "MY_BUCKET",
-  //     "bucket_name": "my-bucket"
-  //   }
-  // ],
-  // "d1_databases": [
-  //   {
-  //     "binding": "MY_DB",
-  //     "database_name": "my-database",
-  //     "database_id": ""
-  //   }
-  // ],
-  // "ai": {
-  //   "binding": "AI"
-  // },
-  // "observability": {
-  //   "enabled": true,
-  //   "head_sampling_rate": 1
-  // }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "R2_BUCKET_MIGRATION",
+      "bucket_name": "amv-system-migration"
+    }
+  ]
 }

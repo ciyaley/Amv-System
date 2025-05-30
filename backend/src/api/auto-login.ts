@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import { createJWTUtil } from "../utils/jwt";
-import type { Env } from "../../config/env";
+import type { Env } from "../config/env";
 
 export const autoLogin = new Hono<{ Bindings: Env }>();
 

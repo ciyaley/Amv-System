@@ -24,7 +24,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       return;
     }
     try {
-      const [handle] = await (window as any).showOpenFilePicker({
+      const [handle] = await (window as typeof window & { showOpenFilePicker: (options?: { types?: { description: string; accept: Record<string, string[]> }[]; multiple?: boolean }) => Promise<FileSystemFileHandle[]> }).showOpenFilePicker({
         types: [
           {
             description: "画像ファイル",

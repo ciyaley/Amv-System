@@ -1,7 +1,7 @@
 // frontend/app/components/Cropper.tsx
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 
 interface CropRect {
   x: number;     // 0～1 (親コンテナ幅に対する割合)
@@ -49,7 +49,7 @@ export const Cropper: React.FC<CropperProps> = ({
     window.addEventListener("mousemove", onMouseMove);
   };
 
-  const onMouseMove = (e: MouseEvent) => {
+  const onMouseMove = useCallback((e: MouseEvent) => {
     if (!containerRef.current || !lastPos.current || !mode) return;
     const rect = containerRef.current.getBoundingClientRect();
     const dx = e.clientX - lastPos.current.x;
@@ -74,21 +74,21 @@ export const Cropper: React.FC<CropperProps> = ({
     }
 
     onCropChange({ x, y, width });
-  };
+  }, [mode, crop, aspectRatio, onCropChange]);
 
-  const onMouseUp = () => {
+  const onMouseUp = useCallback(() => {
     setMode(null);
     lastPos.current = null;
     window.removeEventListener("mouseup", onMouseUp);
     window.removeEventListener("mousemove", onMouseMove);
-  };
+  }, [onMouseMove]);
 
   useEffect(() => {
     return () => {
       window.removeEventListener("mouseup", onMouseUp);
       window.removeEventListener("mousemove", onMouseMove);
     };
-  }, []);
+  }, [onMouseMove, onMouseUp]);
 
   // 描画
   return (
