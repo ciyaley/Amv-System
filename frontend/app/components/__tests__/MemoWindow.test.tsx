@@ -45,7 +45,10 @@ describe('MemoWindow Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    ;(useMemos as ReturnType<typeof vi.fn>).mockReturnValue({
+    const mockedUseMemos = vi.mocked(useMemos)
+    mockedUseMemos.mockReturnValue({
+      memos: [],
+      createMemo: vi.fn(),
       updateMemo: mockUpdateMemo,
       updateMemoPosition: mockUpdateMemoPosition,
       updateMemoSize: mockUpdateMemoSize,
@@ -53,10 +56,22 @@ describe('MemoWindow Component', () => {
       bringToFront: mockBringToFront,
       sendToBack: mockSendToBack,
       moveUp: mockMoveUp,
-      moveDown: mockMoveDown
+      moveDown: mockMoveDown,
+      setMemos: vi.fn(),
+      loadMemosFromDisk: vi.fn(),
+      persistMemo: vi.fn()
     })
-    ;(useCanvasStore as ReturnType<typeof vi.fn>).mockReturnValue({
-      zoom: 1
+    
+    const mockedUseCanvasStore = vi.mocked(useCanvasStore)
+    mockedUseCanvasStore.mockReturnValue({
+      zoom: 1,
+      offsetX: 0,
+      offsetY: 0,
+      setZoom: vi.fn(),
+      setOffset: vi.fn(),
+      resetView: vi.fn(),
+      layout: null,
+      setLayout: vi.fn()
     })
   })
 

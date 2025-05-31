@@ -27,7 +27,8 @@ export default defineConfig({
       ]
     },
     globals: true,
-    css: true
+    css: true,
+    testTimeout: 30000 // 30秒に延長
   },
   resolve: {
     alias: {

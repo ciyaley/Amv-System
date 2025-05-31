@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AuthForm } from '../AuthForm'
@@ -13,10 +13,16 @@ describe('AuthForm Component', () => {
   
   beforeEach(() => {
     vi.clearAllMocks()
-    ;(useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
+    const mockedUseAuth = vi.mocked(useAuth)
+    mockedUseAuth.mockReturnValue({
       login: mockLogin,
       register: mockRegister,
       isLoggedIn: false,
+      uuid: null,
+      email: null,
+      checkAutoLogin: vi.fn(),
+      logout: vi.fn(),
+      setAuth: vi.fn()
     })
   })
 
@@ -155,5 +161,95 @@ describe('AuthForm Component', () => {
         expect(passwordInput.value).toBe('')
       })
     })
+  })
+
+  describe('ネットワークエラーハンドリング', () => {
+    it('should display error message on network failure during login', async () => {
+      const user = userEvent.setup()
+      
+      // ネットワークエラーをモックで再現
+      mockLogin.mockRejectedValueOnce(new Error('Network error'))
+      
+      render(<AuthForm />)
+      
+      await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
+      await user.type(screen.getByLabelText('パスワード'), 'ValidPassword123!')
+      await user.click(screen.getByRole('button', { name: 'ログイン' }))
+      
+      await waitFor(() => {
+        expect(screen.getByText('Network error')).toBeInTheDocument()
+      })
+    })
+
+    it('should display error message on network failure during registration', async () => {
+      const user = userEvent.setup()
+      
+      // ネットワークエラーをモックで再現
+      mockRegister.mockRejectedValueOnce(new Error('Network error'))
+      
+      render(<AuthForm />)
+      
+      // 登録フォームに切り替え
+      await user.click(screen.getByText('アカウントを作成'))
+      
+      await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
+      await user.type(screen.getByLabelText('パスワード'), 'ValidPassword123!')
+      await user.type(screen.getByLabelText('パスワード（確認）'), 'ValidPassword123!')
+      await user.click(screen.getByRole('button', { name: '登録' }))
+      
+      await waitFor(() => {
+        expect(screen.getByText('Network error')).toBeInTheDocument()
+      })
+    })
+
+    it('should display specific error message for server errors', async () => {
+      const user = userEvent.setup()
+      
+      // サーバーエラーをモックで再現
+      mockLogin.mockRejectedValueOnce(new Error('Service Unavailable'))
+      
+      render(<AuthForm />)
+      
+      await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
+      await user.type(screen.getByLabelText('パスワード'), 'ValidPassword123!')
+      await user.click(screen.getByRole('button', { name: 'ログイン' }))
+      
+      await waitFor(() => {
+        expect(screen.getByText('Service Unavailable')).toBeInTheDocument()
+      })
+    })
+
+    it('should handle JSON parsing errors gracefully', async () => {
+      const user = userEvent.setup()
+      
+      // JSON解析エラーをモックで再現
+      mockLogin.mockRejectedValueOnce(new Error('Unexpected token in JSON'))
+      
+      render(<AuthForm />)
+      
+      await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
+      await user.type(screen.getByLabelText('パスワード'), 'ValidPassword123!')
+      await user.click(screen.getByRole('button', { name: 'ログイン' }))
+      
+      await waitFor(() => {
+        expect(screen.getByText('Unexpected token in JSON')).toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('タイムアウトエラーハンドリング', () => {
+    it('should handle timeout during login', async () => {
+      const user = userEvent.setup()
+      
+      render(<AuthForm />)
+      
+      await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
+      await user.type(screen.getByLabelText('パスワード'), 'ValidPassword123!')
+      await user.click(screen.getByRole('button', { name: 'ログイン' }))
+      
+      // ローディング状態を確認
+      expect(screen.getByText('処理中...')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '処理中...' })).toBeDisabled()
+    }, 15000) // タイムアウトテストのため15秒に延長
   })
 })

@@ -27,23 +27,12 @@ Object.defineProperty(window, 'matchMedia', {
 })
 
 // Mock File System Access API
-const mockDirHandle = {
+const createMockDirectoryHandle = (name: string): any => ({
   kind: 'directory',
-  name: 'test-dir',
-  getDirectoryHandle: vi.fn().mockResolvedValue({
-    kind: 'directory',
-    name: 'memos',
-    getFileHandle: vi.fn().mockResolvedValue({
-      kind: 'file',
-      name: 'test.json',
-      createWritable: vi.fn().mockResolvedValue({
-        write: vi.fn(),
-        close: vi.fn()
-      }),
-      getFile: vi.fn().mockResolvedValue(new File(['{}'], 'test.json'))
-    }),
-    values: vi.fn().mockReturnValue([])
-  }),
+  name,
+  getDirectoryHandle: vi.fn().mockImplementation((subName: string) => 
+    Promise.resolve(createMockDirectoryHandle(subName))
+  ),
   getFileHandle: vi.fn().mockResolvedValue({
     kind: 'file',
     name: 'test.json',
@@ -53,9 +42,13 @@ const mockDirHandle = {
     }),
     getFile: vi.fn().mockResolvedValue(new File(['{}'], 'test.json'))
   }),
+  removeEntry: vi.fn().mockResolvedValue(undefined),
+  values: vi.fn().mockReturnValue([]),
   requestPermission: vi.fn().mockResolvedValue('granted'),
   queryPermission: vi.fn().mockResolvedValue('granted')
-}
+})
+
+const mockDirHandle = createMockDirectoryHandle('test-dir')
 
 if (!(window as any).showDirectoryPicker) {
   (window as any).showDirectoryPicker = vi.fn().mockResolvedValue(mockDirHandle)
@@ -73,15 +66,35 @@ const crypto = {
     return arr
   },
   subtle: {
-    encrypt: vi.fn(),
-    decrypt: vi.fn(),
-    importKey: vi.fn(),
-    deriveBits: vi.fn(),
-    digest: vi.fn(),
+    importKey: vi.fn().mockResolvedValue({}),
+    deriveKey: vi.fn().mockResolvedValue({}),
+    encrypt: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
+    decrypt: vi.fn().mockResolvedValue(new ArrayBuffer(32))
   }
 }
 
 Object.defineProperty(window, 'crypto', {
-  value: crypto,
-  writable: true,
+  configurable: true,
+  enumerable: true,
+  value: crypto
+})
+
+// グローバルなTextEncoderとTextDecoderを追加
+global.TextEncoder = TextEncoder
+global.TextDecoder = TextDecoder
+
+// console.error をモック（テスト時のノイズを減らす）
+const originalError = console.error
+beforeAll(() => {
+  console.error = (...args: any[]) => {
+    // persistMemoのエラーは無視
+    if (args[0]?.toString()?.includes('Failed to save memo')) {
+      return
+    }
+    originalError.call(console, ...args)
+  }
+})
+
+afterAll(() => {
+  console.error = originalError
 })

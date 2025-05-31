@@ -4,6 +4,7 @@
 import { create } from "zustand";
 import { nanoid } from "nanoid";
 import { saveIndividualMemo, loadAllMemos, deleteMemoFile } from "../../utils/fileAccess";
+import { useEncryptionStore } from "./useEncryptionStore";
 
 export interface MemoPosition {
   x: number;
@@ -28,6 +29,8 @@ export interface MemoData {
   id: string;
   type: 'memo';
   title: string;
+  importance?: 'high' | 'medium' | 'low';
+  category?: string;
   text: string;
   x: number;
   y: number;
@@ -56,6 +59,8 @@ interface MemoState {
   moveUp: (id: string) => void;
   moveDown: (id: string) => void;
   loadMemosFromDisk: () => Promise<void>;
+  saveAllMemos: () => Promise<void>;
+  saveMemoManually: (id: string) => Promise<void>;
 }
 
 export const useMemos = create<MemoState>((set, get) => {
@@ -72,11 +77,16 @@ export const useMemos = create<MemoState>((set, get) => {
 
   const persistMemo = async (memo: MemoData) => {
     try {
-      await saveIndividualMemo(memo);
+      // 自動保存はログイン時のみ
+      const { password } = useEncryptionStore.getState();
+      if (password) {
+        await saveIndividualMemo(memo);
+      }
     } catch (error) {
       console.error("Failed to save memo:", error);
     }
   };
+
 
   return {
     memos: [],
@@ -219,6 +229,29 @@ export const useMemos = create<MemoState>((set, get) => {
         set({ memos });
       } catch (error) {
         console.error("Failed to load memos:", error);
+      }
+    },
+
+    saveAllMemos: async () => {
+      const memos = get().memos;
+      for (const memo of memos) {
+        try {
+          await saveIndividualMemo(memo);
+        } catch (error) {
+          console.error(`Failed to save memo ${memo.id}:`, error);
+        }
+      }
+    },
+
+    saveMemoManually: async (id: string) => {
+      const memo = get().memos.find(m => m.id === id);
+      if (!memo) return;
+      
+      try {
+        await saveIndividualMemo(memo);
+      } catch (error) {
+        console.error(`Failed to save memo ${id}:`, error);
+        throw error;
       }
     }
   };

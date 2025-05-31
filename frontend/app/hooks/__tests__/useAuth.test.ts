@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useAuth } from '../useAuth'
+import { server } from '../../../tests/mocks/server'
+import { networkErrorHandlers, serverErrorHandlers, invalidJsonHandlers } from '../../../tests/mocks/handlers'
 
 describe('useAuth Hook', () => {
   beforeEach(() => {
@@ -135,6 +137,113 @@ describe('useAuth Hook', () => {
       expect(result.current.isLoggedIn).toBe(false)
       expect(result.current.uuid).toBeNull()
       expect(result.current.email).toBeNull()
+    })
+  })
+
+  describe('ネットワークエラーハンドリング', () => {
+    it('should handle network error during registration', async () => {
+      const { result } = renderHook(() => useAuth())
+      
+      // MSWでネットワークエラーをシミュレート
+      server.use(...networkErrorHandlers)
+      
+      await expect(
+        result.current.register('test@example.com', 'ValidPassword123!')
+      ).rejects.toThrow()
+
+      expect(result.current.isLoggedIn).toBe(false)
+      
+      // 元のハンドラーに戻す
+      server.resetHandlers()
+    })
+
+    it('should handle network error during login', async () => {
+      const { result } = renderHook(() => useAuth())
+      
+      server.use(...networkErrorHandlers)
+      
+      await expect(
+        result.current.login('test@example.com', 'ValidPassword123!')
+      ).rejects.toThrow()
+
+      expect(result.current.isLoggedIn).toBe(false)
+      
+      server.resetHandlers()
+    })
+
+    it('should handle auto-login network error gracefully', async () => {
+      const { result } = renderHook(() => useAuth())
+      
+      server.use(...networkErrorHandlers)
+      
+      // auto-loginはエラーを握りつぶすので例外を投げない
+      await act(async () => {
+        await result.current.checkAutoLogin()
+      })
+
+      expect(result.current.isLoggedIn).toBe(false)
+      
+      server.resetHandlers()
+    })
+  })
+
+  describe('サーバーエラーハンドリング', () => {
+    it('should handle 500 server error during registration', async () => {
+      const { result } = renderHook(() => useAuth())
+      
+      server.use(...serverErrorHandlers)
+      
+      await expect(
+        result.current.register('test@example.com', 'ValidPassword123!')
+      ).rejects.toThrow('Internal Server Error')
+
+      expect(result.current.isLoggedIn).toBe(false)
+      
+      server.resetHandlers()
+    })
+
+    it('should handle 503 server error during login', async () => {
+      const { result } = renderHook(() => useAuth())
+      
+      server.use(...serverErrorHandlers)
+      
+      await expect(
+        result.current.login('test@example.com', 'ValidPassword123!')
+      ).rejects.toThrow('Service Unavailable')
+
+      expect(result.current.isLoggedIn).toBe(false)
+      
+      server.resetHandlers()
+    })
+  })
+
+  describe('JSON解析エラーハンドリング', () => {
+    it('should handle invalid JSON response during registration', async () => {
+      const { result } = renderHook(() => useAuth())
+      
+      server.use(...invalidJsonHandlers)
+      
+      await expect(
+        result.current.register('test@example.com', 'ValidPassword123!')
+      ).rejects.toThrow()
+
+      expect(result.current.isLoggedIn).toBe(false)
+      
+      server.resetHandlers()
+    })
+
+    it('should handle invalid JSON response during login', async () => {
+      const { result } = renderHook(() => useAuth())
+      
+      server.use(...invalidJsonHandlers)
+      
+      await expect(
+        result.current.login('test@example.com', 'ValidPassword123!')
+      ).rejects.toThrow()
+
+      expect(result.current.isLoggedIn).toBe(false)
+      
+      server.resetHandlers()
     })
   })
 })

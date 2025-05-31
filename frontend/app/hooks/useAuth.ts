@@ -14,6 +14,7 @@ interface AuthState {
   register: (email: string, password: string) => Promise<void>;
   checkAutoLogin: () => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   setAuth: (isLoggedIn: boolean, uuid: string | null, email: string | null) => void;
 }
 
@@ -30,6 +31,9 @@ function validatePassword(password: string): void {
   }
 }
 
+// API_BASE_URL設定
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
+
 export const useAuth = create<AuthState>((set) => ({
   isLoggedIn: false,
   uuid: null,
@@ -41,7 +45,7 @@ export const useAuth = create<AuthState>((set) => ({
     // パスワードバリデーション
     validatePassword(password);
     
-    const res = await fetch("http://localhost:8787/api/auth/register", {
+    const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -65,7 +69,7 @@ export const useAuth = create<AuthState>((set) => ({
 
   /* ---------- login ---------- */
   login: async (email, password) => {
-    const res = await fetch("http://localhost:8787/api/auth/login", {
+    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -90,7 +94,7 @@ export const useAuth = create<AuthState>((set) => ({
   /* ---------- checkAutoLogin ---------- */
   checkAutoLogin: async () => {
     try {
-      const res = await fetch("http://localhost:8787/api/autologin", { 
+      const res = await fetch(`${API_BASE_URL}/api/autologin`, { 
         method: "GET", 
         credentials: "include" 
       });
@@ -103,6 +107,11 @@ export const useAuth = create<AuthState>((set) => ({
       }
       const data = await res.json();
       set({ isLoggedIn: true, uuid: data.uuid, email: data.email });
+      
+      // パスワードが取得できた場合は暗号化ストアにも設定
+      if (data.password) {
+        useEncryptionStore.setState({ password: data.password });
+      }
     } catch (error) {
       // エラーは握りつぶす（未ログイン状態として扱う）
       console.log('Auto-login check failed:', error);
@@ -112,7 +121,7 @@ export const useAuth = create<AuthState>((set) => ({
   /* ---------- logout ---------- */
   logout: async () => {
     try {
-      await fetch("http://localhost:8787/api/auth/logout", {
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
@@ -124,6 +133,28 @@ export const useAuth = create<AuthState>((set) => ({
     // ハンドルは残す（ユーザーが再ログイン時に再利用可能）
   },
   
+  /* ---------- deleteAccount ---------- */
+  deleteAccount: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/delete`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "アカウント削除に失敗しました");
+      }
+      
+      // アカウント削除後、ローカル状態もクリア
+      set({ isLoggedIn: false, uuid: null, email: null });
+      useEncryptionStore.setState({ password: null });
+    } catch (error) {
+      console.error('Delete account error:', error);
+      throw error;
+    }
+  },
+
   /* ---------- setAuth (for testing) ---------- */
   setAuth: (isLoggedIn, uuid, email) => {
     set({ isLoggedIn, uuid, email });

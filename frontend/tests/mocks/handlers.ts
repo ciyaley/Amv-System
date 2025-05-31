@@ -2,6 +2,71 @@ import { http, HttpResponse } from 'msw'
 
 const API_BASE_URL = 'http://localhost:8787'
 
+// ネットワークエラーのシミュレーション用ハンドラー
+export const networkErrorHandlers = [
+  // ネットワークエラー（サーバー接続失敗）
+  http.post(`${API_BASE_URL}/api/auth/register`, () => {
+    return HttpResponse.error()
+  }),
+  http.post(`${API_BASE_URL}/api/auth/login`, () => {
+    return HttpResponse.error()
+  }),
+  http.get(`${API_BASE_URL}/api/autologin`, () => {
+    return HttpResponse.error()
+  }),
+]
+
+// タイムアウトエラーのシミュレーション用ハンドラー
+export const timeoutHandlers = [
+  http.post(`${API_BASE_URL}/api/auth/register`, async () => {
+    // 10秒待機してタイムアウトをシミュレート
+    await new Promise(resolve => setTimeout(resolve, 10000))
+    return HttpResponse.json({ message: 'Should not reach here' })
+  }),
+  http.post(`${API_BASE_URL}/api/auth/login`, async () => {
+    await new Promise(resolve => setTimeout(resolve, 10000))
+    return HttpResponse.json({ message: 'Should not reach here' })
+  }),
+]
+
+// 不正なJSONレスポンスのシミュレーション用ハンドラー
+export const invalidJsonHandlers = [
+  http.post(`${API_BASE_URL}/api/auth/register`, () => {
+    return new Response('Invalid JSON response', {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }),
+  http.post(`${API_BASE_URL}/api/auth/login`, () => {
+    return new Response('Invalid JSON response', {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }),
+]
+
+// 500系サーバーエラーのシミュレーション用ハンドラー
+export const serverErrorHandlers = [
+  http.post(`${API_BASE_URL}/api/auth/register`, () => {
+    return HttpResponse.json(
+      { status: 'error', message: 'Internal Server Error' },
+      { status: 500 }
+    )
+  }),
+  http.post(`${API_BASE_URL}/api/auth/login`, () => {
+    return HttpResponse.json(
+      { status: 'error', message: 'Service Unavailable' },
+      { status: 503 }
+    )
+  }),
+  http.get(`${API_BASE_URL}/api/autologin`, () => {
+    return HttpResponse.json(
+      { status: 'error', message: 'Internal Server Error' },
+      { status: 500 }
+    )
+  }),
+]
+
 export const handlers = [
   // 登録エンドポイント
   http.post(`${API_BASE_URL}/api/auth/register`, async ({ request }) => {

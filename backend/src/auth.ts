@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { createJWTUtil } from "./utils/jwt";
 import { getCookie, setCookie } from "hono/cookie";
+import { encryptJSON, decryptJSON } from "./utils/crypto";
 import type { Env } from "./config/env";
 import { hash, compare } from "bcryptjs";
 
@@ -30,7 +31,16 @@ auth.post("/register", async (c) => {
   // 保存
   const passwordHash = await hash(password, 8);
   const uuid = crypto.randomUUID();
-  await kv.put(email, JSON.stringify({ uuid, password: passwordHash }));
+  
+  // パスワードをサーバーサイド暗号化して保存
+  const encryptedPassword = await encryptJSON(password, c.env.JWT_SECRET);
+  const userData = {
+    uuid,
+    passwordHash, // 認証用ハッシュ
+    encryptedPassword: Array.from(encryptedPassword) // クライアント暗号化用の平文パスワード（暗号化済み）
+  };
+  
+  await kv.put(email, JSON.stringify(userData));
 
   // JWT 発行 + Cookie
   const jwt = createJWTUtil(c.env.JWT_SECRET);
@@ -50,17 +60,17 @@ auth.post("/login", async (c) => {
     return c.json({ status: "error", code: 1001, message: "Invalid credentials" }, 401);
   }
 
-  const { uuid, password: storedPassword } = JSON.parse(stored);
-  if (!(await compare(password, storedPassword))) {
+  const userData = JSON.parse(stored);
+  if (!(await compare(password, userData.passwordHash))) {
     return c.json({ status: "error", code: 1001, message: "Invalid credentials" }, 401);
   }
 
   // JWT 再発行 + Cookie
   const jwt = createJWTUtil(c.env.JWT_SECRET);
-  const token = await jwt.sign({ uuid, email });
+  const token = await jwt.sign({ uuid: userData.uuid, email });
   setJwtCookie(c, token);
 
-  return c.json({ message: "Logged in successfully", uuid, email }, 200);
+  return c.json({ message: "Logged in successfully", uuid: userData.uuid, email }, 200);
 });
 
 /** ─────────────  LOGOUT  ───────────── **/
@@ -75,6 +85,43 @@ auth.post("/logout", async (c) => {
   });
   
   return c.json({ message: "Logged out successfully" }, 200);
+});
+
+/** ─────────────  DELETE ACCOUNT  ───────────── **/
+auth.delete("/delete", async (c) => {
+  const token = getCookie(c, "token");
+  
+  if (!token) {
+    return c.json({ status: "error", code: 1004, message: "Not authenticated" }, 401);
+  }
+
+  try {
+    const jwt = createJWTUtil(c.env.JWT_SECRET);
+    const payload = await jwt.verify(token);
+    
+    if (!payload) {
+      return c.json({ status: "error", code: 1003, message: "Invalid token" }, 401);
+    }
+
+    const kv = c.env.KV_NAMESPACE_AUTH;
+    
+    // ユーザーデータをKVから削除
+    await kv.delete(payload.email);
+    
+    // Cookieも削除
+    setCookie(c, "token", "", {
+      path: "/",
+      httpOnly: true,
+      sameSite: "Strict",
+      secure: c.env.SITE_URL?.startsWith("https"),
+      maxAge: 0,
+    });
+    
+    return c.json({ message: "Account deleted successfully" }, 200);
+  } catch (error) {
+    console.error("Delete account error:", error);
+    return c.json({ status: "error", code: 3001, message: "Internal server error" }, 500);
+  }
 });
 
 export default auth;

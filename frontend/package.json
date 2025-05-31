@@ -22,6 +22,7 @@
   "dependencies": {
     "@headlessui/react": "^2.2.2",
     "@headlessui/tailwindcss": "^0.2.2",
+    "@heroicons/react": "^2.2.0",
     "idb": "^8.0.3",
     "lucide-react": "^0.508.0",
     "next": "15.3.1",

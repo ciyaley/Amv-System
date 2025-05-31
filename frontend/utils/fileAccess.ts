@@ -26,8 +26,28 @@ let dirHandle: FileSystemDirectoryHandle | null = null;
 
 /* ① 永続ハンドル取得（なければ null） */
 export async function getStoredDir(): Promise<FileSystemDirectoryHandle | null> {
-  if (dirHandle) return dirHandle;
+  if (dirHandle) {
+    // ハンドルの有効性をチェック
+    try {
+      await (dirHandle as any).requestPermission({ mode: "readwrite" });
+      return dirHandle;
+    } catch {
+      // ハンドルが無効な場合はリセット
+      dirHandle = null;
+    }
+  }
+  
   dirHandle = await loadDirHandle();
+  if (dirHandle) {
+    // 読み込んだハンドルの有効性もチェック
+    try {
+      await (dirHandle as any).requestPermission({ mode: "readwrite" });
+      return dirHandle;
+    } catch {
+      dirHandle = null;
+    }
+  }
+  
   return dirHandle;
 }
 
@@ -55,7 +75,16 @@ export async function requestDirectory(): Promise<FileSystemDirectoryHandle> {
 }
 
 async function ensureDir(): Promise<FileSystemDirectoryHandle> {
-  return (await getStoredDir()) ?? (await requestDirectory());
+  const stored = await getStoredDir();
+  if (stored) return stored;
+  
+  // ディレクトリが未設定でパスワードもない場合はエラー
+  const { password } = useEncryptionStore.getState();
+  if (!password) {
+    throw new Error("未ログイン状態では手動保存のみ利用できます。ディレクトリを選択してください。");
+  }
+  
+  return await requestDirectory();
 }
 
 /* ③ ワークスペース保存・読み込み */
@@ -84,7 +113,14 @@ export async function loadWorkspace(): Promise<any | null> {
 /* ④ メモの個別保存 */
 export async function saveIndividualMemo(memo: MemoData) {
   const root = await ensureDir();
-  const memosDir = await root.getDirectoryHandle(MEMOS_DIR);
+  
+  // 権限確認とメモディレクトリ取得
+  const permission = await (root as any).requestPermission({ mode: "readwrite" });
+  if (permission !== "granted") {
+    throw new Error("ファイルへの書き込み権限が許可されていません");
+  }
+  
+  const memosDir = await root.getDirectoryHandle(MEMOS_DIR, { create: true });
   
   // ファイル名の生成（タイトルベース + 重複対応）
   let filename = sanitizeFilename(memo.title);

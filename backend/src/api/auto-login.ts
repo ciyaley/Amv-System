@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import { createJWTUtil } from "../utils/jwt";
+import { decryptJSON } from "../utils/crypto";
 import type { Env } from "../config/env";
 
 export const autoLogin = new Hono<{ Bindings: Env }>();
@@ -27,7 +28,36 @@ autoLogin.get("/", async (c) => {
       return c.json({ status: "error", code: 1003, message: "Invalid token" }, 401);
     }
 
-    // ④ 成功 ⇒ 200
+    // ④ ユーザーデータを取得してパスワードも復号して返す
+    try {
+      const kv = c.env.KV_NAMESPACE_AUTH;
+      const userData = await kv.get(payload.email);
+      
+      if (userData) {
+        const parsedData = JSON.parse(userData);
+        
+        // 暗号化されたパスワードを復号
+        let decryptedPassword = null;
+        if (parsedData.encryptedPassword) {
+          try {
+            const encryptedBytes = new Uint8Array(parsedData.encryptedPassword);
+            decryptedPassword = await decryptJSON(encryptedBytes, c.env.JWT_SECRET);
+          } catch (decryptError) {
+            console.error("Password decryption failed:", decryptError);
+          }
+        }
+        
+        return c.json({ 
+          uuid: payload.uuid, 
+          email: payload.email,
+          password: decryptedPassword // クライアントサイド暗号化用
+        }, 200);
+      }
+    } catch (kvError) {
+      console.error("Failed to fetch user data from KV:", kvError);
+    }
+    
+    // フォールバック: パスワードなしで返す
     return c.json({ uuid: payload.uuid, email: payload.email }, 200);
   } catch (err) {
     console.error("auto-login error", err);
