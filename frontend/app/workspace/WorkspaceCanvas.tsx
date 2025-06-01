@@ -1,9 +1,9 @@
 // frontend/app/workspace/WorkspaceCanvas.tsx
 "use client";
 
-import { useCanvasStore } from "@/app/hooks/useCanvas";
-import { useThemeStore } from "@/app/hooks/useTheme";
-import { useMemos } from "@/app/hooks/useMemos";
+import { useCanvasStore } from "../hooks/useCanvas";
+import { useThemeStore } from "../hooks/useTheme";
+import { useMemos } from "../hooks/useMemos";
 import { MemoWindow } from "./Memowindow";
 import { useRef, useState, useEffect } from "react";
 
@@ -20,7 +20,8 @@ export const WorkspaceCanvas = () => {
   } = useCanvasStore();
   const { bgColor, bgHandle, getBgImageUrl } = useThemeStore();
   const [bgUrl, setBgUrl] = useState<string | null>(null);
-  const memos = useMemos((s) => s.memos);
+  const getVisibleMemos = useMemos((s) => s.getVisibleMemos);
+  const visibleMemos = getVisibleMemos();
 
   
   useEffect(() => {
@@ -118,7 +119,7 @@ export const WorkspaceCanvas = () => {
           backgroundSize: "cover",
         }}
       >
-        {memos.map((m) => (
+        {visibleMemos.map((m) => (
           <MemoWindow key={m.id} memo={m} />
         ))}
       </div>

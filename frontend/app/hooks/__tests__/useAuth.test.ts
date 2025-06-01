@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useAuth } from '../useAuth'
 import { server } from '../../../tests/mocks/server'
@@ -137,6 +137,31 @@ describe('useAuth Hook', () => {
       expect(result.current.isLoggedIn).toBe(false)
       expect(result.current.uuid).toBeNull()
       expect(result.current.email).toBeNull()
+    })
+
+    it('should clear file system cache and memo data on logout', async () => {
+      const { result } = renderHook(() => useAuth())
+      
+      // ログイン状態を設定
+      act(() => {
+        result.current.setAuth(true, 'test-uuid', 'test@example.com')
+      })
+
+      // consoleログをスパイ
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+      await act(async () => {
+        await result.current.logout()
+      })
+
+      expect(result.current.isLoggedIn).toBe(false)
+      
+      // ファイルシステムキャッシュクリアとメモデータクリアのログを確認
+      expect(consoleLogSpy).toHaveBeenCalledWith('File system cache cleared')
+      expect(consoleLogSpy).toHaveBeenCalledWith('All memos cleared from memory')
+      expect(consoleLogSpy).toHaveBeenCalledWith('Logout completed and all cache cleared')
+
+      consoleLogSpy.mockRestore()
     })
   })
 

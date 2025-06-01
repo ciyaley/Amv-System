@@ -10,7 +10,7 @@ interface Props {
 }
 
 export const MemoWindow = ({ memo }: Props) => {
-  const { updateMemo, updateMemoPosition, updateMemoSize, deleteMemo, bringToFront, sendToBack, moveUp, moveDown } = useMemos();
+  const { updateMemo, updateMemoPosition, updateMemoSize, deleteMemo, bringToFront, sendToBack, moveUp, moveDown, toggleMemoVisibility } = useMemos();
   const { zoom } = useCanvasStore();
   const [editing, setEditing] = useState(false);
   const [localTitle, setLocalTitle] = useState(memo.title);
@@ -75,14 +75,14 @@ export const MemoWindow = ({ memo }: Props) => {
     window.addEventListener("mouseup", up);
   };
 
-  /** ── 編集完了時の保存 ────────────────── */
+  /** ── 編集完了時の自動保存 ────────────────── */
   const handleSave = () => {
     updateMemo(memo.id, { 
       title: localTitle || '無題のメモ',
       text: localText 
     });
     setEditing(false);
-    toast.success('メモを保存しました');
+    // 自動保存のため、トーストは表示しない
   };
 
   /** ── タグの追加 ────────────────── */
@@ -164,6 +164,15 @@ export const MemoWindow = ({ memo }: Props) => {
             title="タグ"
           >
             #
+          </button>
+          
+          {/* 画面から隠すボタン */}
+          <button
+            onClick={() => toggleMemoVisibility(memo.id)}
+            className="p-1 text-xs hover:bg-yellow-200 rounded"
+            title="画面から隠す"
+          >
+            👁
           </button>
           
           {/* 削除ボタン（長押し） */}
@@ -276,9 +285,9 @@ export const MemoWindow = ({ memo }: Props) => {
               </button>
               <button
                 onClick={handleSave}
-                className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
               >
-                保存
+                完了
               </button>
             </div>
           </div>

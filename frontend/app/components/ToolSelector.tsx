@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SquarePen } from "lucide-react"; 
 import { useMemos } from "../hooks/useMemos";
-import { useCanvasStore } from "@/app/hooks/useCanvas";
+import { useCanvasStore } from "../hooks/useCanvas";
 
 // 将来増えるツールもここに追加するだけでOK
 const tools: {

@@ -44,6 +44,7 @@ export interface MemoData {
   appearance?: MemoAppearance;
   linkedUrls?: string[];
   linkedImages?: string[];
+  visible?: boolean; // 画面表示制御（デフォルト: true）
 }
 
 interface MemoState {
@@ -61,6 +62,11 @@ interface MemoState {
   loadMemosFromDisk: () => Promise<void>;
   saveAllMemos: () => Promise<void>;
   saveMemoManually: (id: string) => Promise<void>;
+  clearAllMemos: () => void;
+  toggleMemoVisibility: (id: string) => void;
+  focusMemoOnCanvas: (id: string) => void;
+  getVisibleMemos: () => MemoData[];
+  getHiddenMemos: () => MemoData[];
 }
 
 export const useMemos = create<MemoState>((set, get) => {
@@ -75,15 +81,37 @@ export const useMemos = create<MemoState>((set, get) => {
     return firstLine.slice(0, 20) || '新しいメモ';
   };
 
+  // デバウンス用のタイマーを管理
+  const saveTimers = new Map<string, NodeJS.Timeout>();
+
   const persistMemo = async (memo: MemoData) => {
     try {
       // 自動保存はログイン時のみ
       const { password } = useEncryptionStore.getState();
-      if (password) {
-        await saveIndividualMemo(memo);
+      if (!password) return;
+
+      // 既存のタイマーをクリア（デバウンス）
+      const existingTimer = saveTimers.get(memo.id);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
       }
+
+      // 500ms後に保存実行（デバウンス）
+      const timer = setTimeout(async () => {
+        try {
+          await saveIndividualMemo(memo);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Auto-saved memo: ${memo.id}`);
+          }
+        } catch (error) {
+          console.error(`Failed to auto-save memo ${memo.id}:`, error);
+        }
+        saveTimers.delete(memo.id);
+      }, 500);
+
+      saveTimers.set(memo.id, timer);
     } catch (error) {
-      console.error("Failed to save memo:", error);
+      console.error("Failed to setup auto-save:", error);
     }
   };
 
@@ -94,6 +122,11 @@ export const useMemos = create<MemoState>((set, get) => {
     setMemos: (list) => set({ memos: list }),
 
     createMemo: (position) => {
+      // 開発環境でのみログ出力
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Creating new memo at position:', position);
+      }
+      
       const now = new Date().toISOString();
       const newMemo: MemoData = {
         id: `memo_${nanoid()}`,
@@ -108,6 +141,7 @@ export const useMemos = create<MemoState>((set, get) => {
         tags: [],
         created: now,
         updated: now,
+        visible: true, // デフォルトで表示
         appearance: {
           backgroundColor: '#ffeaa7',
           borderColor: '#fdcb6e',
@@ -115,6 +149,10 @@ export const useMemos = create<MemoState>((set, get) => {
           shadowEnabled: true
         }
       };
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Created memo ${newMemo.id} at (${newMemo.x}, ${newMemo.y})`);
+      }
 
       set((s) => ({
         memos: [...s.memos, newMemo]
@@ -225,8 +263,55 @@ export const useMemos = create<MemoState>((set, get) => {
 
     loadMemosFromDisk: async () => {
       try {
+        // ログイン状態チェック - 未ログイン時は読み込まない
+        const { password } = useEncryptionStore.getState();
+        if (!password) {
+          console.log('Skipping memo loading: not logged in');
+          return;
+        }
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Loading memos from disk...');
+        }
+        const currentMemos = get().memos;
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Current memo count before loading: ${currentMemos.length}`);
+        }
+        
         const memos = await loadAllMemos();
-        set({ memos });
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Loaded memo count from disk: ${memos.length}`);
+        }
+        
+        // 重複防止: より厳密なチェック
+        if (currentMemos.length > 0) {
+          const currentIds = new Set(currentMemos.map(m => m.id));
+          const hasNewMemos = memos.some(m => !currentIds.has(m.id));
+          
+          if (!hasNewMemos && memos.length <= currentMemos.length) {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Skipping duplicate memo loading - no new memos found');
+            }
+            return;
+          }
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Loading ${memos.length} memos, ${memos.filter(m => !currentIds.has(m.id)).length} are new`);
+          }
+        }
+        
+        // メモの位置を修正（左上に固まるのを防ぐ）
+        const validatedMemos = memos.map((memo, index) => ({
+          ...memo,
+          x: typeof memo.x === 'number' && memo.x >= 0 ? memo.x : 100 + (index % 5) * 50,
+          y: typeof memo.y === 'number' && memo.y >= 0 ? memo.y : 100 + Math.floor(index / 5) * 50,
+          visible: memo.visible !== false // デフォルトはtrue
+        }));
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Setting ${validatedMemos.length} validated memos`);
+        }
+        set({ memos: validatedMemos });
       } catch (error) {
         console.error("Failed to load memos:", error);
       }
@@ -253,6 +338,61 @@ export const useMemos = create<MemoState>((set, get) => {
         console.error(`Failed to save memo ${id}:`, error);
         throw error;
       }
+    },
+
+    clearAllMemos: () => {
+      // 保存中のタイマーをすべてクリア
+      saveTimers.forEach(timer => clearTimeout(timer));
+      saveTimers.clear();
+      
+      set({ memos: [] });
+      console.log('All memos cleared from memory');
+    },
+
+    toggleMemoVisibility: (id: string) => {
+      const memo = get().memos.find(m => m.id === id);
+      if (!memo) return;
+
+      const updatedMemo = {
+        ...memo,
+        visible: !memo.visible,
+        updated: new Date().toISOString()
+      };
+
+      set((s) => ({
+        memos: s.memos.map((m) => (m.id === id ? updatedMemo : m)),
+      }));
+
+      persistMemo(updatedMemo);
+    },
+
+    focusMemoOnCanvas: (id: string) => {
+      const memo = get().memos.find(m => m.id === id);
+      if (!memo) return;
+
+      // メモを表示状態にして最前面に移動
+      const updatedMemo = {
+        ...memo,
+        visible: true,
+        zIndex: Math.max(...get().memos.map((m) => m.zIndex)) + 1,
+        updated: new Date().toISOString()
+      };
+
+      set((s) => ({
+        memos: normalize(
+          s.memos.map((m) => (m.id === id ? updatedMemo : m))
+        ),
+      }));
+
+      persistMemo(updatedMemo);
+    },
+
+    getVisibleMemos: () => {
+      return get().memos.filter(memo => memo.visible !== false);
+    },
+
+    getHiddenMemos: () => {
+      return get().memos.filter(memo => memo.visible === false);
     }
   };
 });

@@ -8,8 +8,8 @@ Amv-System 定義書 v1.1.3
 |------|------|
 | アプリ名 | Amv‑System |
 | 目的 | PC ローカルストレージにメモ・レイアウト等を安全に保存／復元できる多機能ワークスペースを提供し、将来的にチャット・音楽・天気などを疎結合モジュールで拡張可能にする |
-| ターゲット環境 | PC ブラウザ (Chromium 系優先)／IndexedDB フォールバック<br>モバイル対応は後日検討 |
-| コア設計方針 | - データ本体は常にローカルファイル (File System Access API)<br>- 認証情報のみ Cloudflare KV に保存<br>- CloudflareWorkers 上で API を提供 (Pages Functions は使用しない)<br>- UI/UX 一貫・トースト通知統一<br>- AES‑GCM 暗号化を必須として保存データを保護<br>- JSON統一形式 + オプショナルMarkdown書き出し<br>- **適応的インターフェース**による認知負荷軽減 |
+| ターゲット環境 | PC ブラウザ (Chromium 系優先)／<br>モバイル対応は後日検討 |
+| コア設計方針 | - データ本体は常にユーザーストレージ (File System Access API)<br>- 認証情報のみ Cloudflare KV に保存<br>- CloudflareWorkers 上で API を提供 (Pages Functions は使用しない)<br>- UI/UX 一貫・トースト通知統一<br>- AES‑GCM 暗号化を必須として保存データを保護<br>- JSON統一形式 + オプショナルMarkdown書き出し<br>- **適応的インターフェース**による認知負荷軽減 |
 | 将来拡張想定 | ローカル自動バックアップ／クラウド同期 (R2)／PWA オフライン／i18n など |
 
 ### ⚡ 期待するユーザー体験

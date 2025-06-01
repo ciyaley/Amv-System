@@ -1,23 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook } from '@testing-library/react'
 import { useVirtualScroll } from '../useVirtualScroll'
 
 // VirtualScroll Hook のテスト設計
 describe('useVirtualScroll Hook', () => {
-  const mockScrollElement = {
-    scrollTop: 0,
-    clientHeight: 400,
-    scrollHeight: 10000,
-    getBoundingClientRect: vi.fn(() => ({
-      top: 0,
-      left: 0,
-      bottom: 400,
-      right: 300,
-      width: 300,
-      height: 400
-    }))
-  } as unknown as HTMLElement
-
   beforeEach(() => {
     vi.clearAllMocks()
     // IntersectionObserver のモック
@@ -25,7 +11,7 @@ describe('useVirtualScroll Hook', () => {
       observe: vi.fn(),
       unobserve: vi.fn(),
       disconnect: vi.fn(),
-    })) as any
+    })) as unknown as typeof IntersectionObserver
   })
 
   describe('基本計算機能', () => {

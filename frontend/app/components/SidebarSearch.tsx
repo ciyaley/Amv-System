@@ -73,6 +73,7 @@ export const SidebarSearch: React.FC<SidebarSearchProps> = ({
           className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           aria-label="アイテムを検索"
           aria-describedby={hasSearched ? 'search-results-status' : undefined}
+          tabIndex={0}
         />
         {(query || isLoading) && (
           <button

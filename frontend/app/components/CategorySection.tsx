@@ -11,6 +11,8 @@ export interface CategorySectionProps {
   selectedItem?: string
   onItemClick?: (item: MemoData) => void
   onItemPreview?: (item: MemoData | null) => void
+  onToggleVisibility?: (id: string) => void
+  onFocusOnCanvas?: (id: string) => void
   className?: string
 }
 
@@ -43,6 +45,8 @@ export const CategorySection: React.FC<CategorySectionProps> = ({
   selectedItem,
   onItemClick,
   onItemPreview,
+  onToggleVisibility,
+  onFocusOnCanvas,
   className = ''
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
@@ -67,6 +71,7 @@ export const CategorySection: React.FC<CategorySectionProps> = ({
         className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors text-left"
         aria-expanded={isExpanded}
         aria-controls={`category-${category}-items`}
+        tabIndex={2}
       >
         <div className="flex items-center gap-2">
           {isExpanded ? (
@@ -90,6 +95,8 @@ export const CategorySection: React.FC<CategorySectionProps> = ({
               isSelected={selectedItem === item.id}
               onClick={onItemClick}
               onPreview={onItemPreview}
+              onToggleVisibility={onToggleVisibility}
+              onFocusOnCanvas={onFocusOnCanvas}
               className="ml-4"
             />
           ))}

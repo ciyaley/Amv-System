@@ -2,12 +2,12 @@
 "use client";
 
 import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
-import { useModalStore } from "@/app/hooks/useModal";
+import { useModalStore } from "../hooks/useModal";
 import { SettingsSidebar } from "./SettingsSidebar";
 import { GeneralSettings }    from "./GeneralSettings";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { AccountSettings }    from "./AccountSettings";
-import { useSettingsStore }   from "@/app/hooks/useSettings";
+import { useSettingsStore }   from "../hooks/useSettings";
 
 export const SettingsModal = () => {
   const isOpen = useModalStore((s) => s.isOpen);

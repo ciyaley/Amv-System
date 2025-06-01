@@ -4,6 +4,7 @@ import { SidebarSearch } from './SidebarSearch'
 import { CategorySection } from './CategorySection'
 import { VirtualScrollContainer } from './VirtualScrollContainer'
 import { useAdaptiveLayout } from '../hooks/useAdaptiveLayout'
+import { useSettings } from '../hooks/useSettings'
 import type { MemoData } from '../hooks/useMemos'
 
 export interface AdaptiveSidebarProps {
@@ -12,6 +13,8 @@ export interface AdaptiveSidebarProps {
   onItemSelect?: (item: MemoData) => void
   searchQuery?: string
   onSearchChange?: (query: string) => void
+  onToggleVisibility?: (id: string) => void
+  onFocusOnCanvas?: (id: string) => void
   isLoading?: boolean
   isMobile?: boolean
   isOpen?: boolean
@@ -40,6 +43,7 @@ const DensityControls: React.FC<DensityControlsProps> = ({ currentDensity, onDen
           }`}
           aria-label={`${density}表示`}
           aria-pressed={currentDensity === density}
+          tabIndex={1}
         >
           {icons[density]}
         </button>
@@ -65,13 +69,21 @@ const groupItemsByCategory = (items: MemoData[]): Record<string, MemoData[]> => 
 const filterItems = (items: MemoData[], query: string): MemoData[] => {
   if (!query.trim()) return items
   
-  const lowercaseQuery = query.toLowerCase()
-  return items.filter(item => 
-    item.title.toLowerCase().includes(lowercaseQuery) ||
-    item.text?.toLowerCase().includes(lowercaseQuery) ||
-    item.tags?.some(tag => tag.toLowerCase().includes(lowercaseQuery)) ||
-    item.category?.toLowerCase().includes(lowercaseQuery)
-  )
+  const lowercaseQuery = query.toLowerCase().trim()
+  
+  return items.filter(item => {
+    const titleMatch = item.title.toLowerCase().includes(lowercaseQuery)
+    const textMatch = item.text?.toLowerCase().includes(lowercaseQuery) || false
+    const tagMatch = item.tags?.some(tag => tag.toLowerCase().includes(lowercaseQuery)) || false
+    const categoryMatch = item.category?.toLowerCase().includes(lowercaseQuery) || false
+    
+    // より厳密な検索：完全一致も考慮
+    const exactTitleMatch = item.title.toLowerCase() === lowercaseQuery
+    const exactTagMatch = item.tags?.some(tag => tag.toLowerCase() === lowercaseQuery) || false
+    
+    // 完全一致があれば優先、なければ部分一致
+    return exactTitleMatch || exactTagMatch || titleMatch || textMatch || tagMatch || categoryMatch
+  })
 }
 
 export const AdaptiveSidebar: React.FC<AdaptiveSidebarProps> = ({
@@ -80,17 +92,35 @@ export const AdaptiveSidebar: React.FC<AdaptiveSidebarProps> = ({
   onItemSelect,
   searchQuery = '',
   onSearchChange,
+  onToggleVisibility,
+  onFocusOnCanvas,
   isLoading = false,
   isMobile = false,
   isOpen = true,
   onToggle,
   className = ''
 }) => {
+  const { settings, updateSetting } = useSettings()
   const [manualDensity, setManualDensity] = useState<'detailed' | 'standard' | 'dense' | undefined>()
   const [previewItem, setPreviewItem] = useState<MemoData | null>(null)
 
   const filteredItems = useMemo(() => filterItems(items, searchQuery), [items, searchQuery])
-  const layoutConfig = useAdaptiveLayout(filteredItems.length, { manualDensity })
+  
+  // 検索状態を考慮したレイアウト設定（元のアイテム数で基本設定を決定）
+  const effectiveDensity = manualDensity || settings.sidebarDensity
+  const baseLayoutConfig = useAdaptiveLayout(items.length, { 
+    manualDensity: effectiveDensity,
+    forceVirtualScroll: searchQuery.trim().length > 0 ? filteredItems.length >= settings.virtualScrollThreshold : undefined
+  })
+  
+  // 検索時は表示設定を強制的に有効化
+  const layoutConfig = {
+    ...baseLayoutConfig,
+    showSearch: baseLayoutConfig.showSearch || settings.showSearchByDefault || searchQuery.trim().length > 0,
+    enableCategoryGrouping: true,
+    defaultCollapsed: settings.sidebarCollapsed && searchQuery.trim().length === 0 // 検索時は展開
+  }
+  
   const groupedItems = useMemo(() => groupItemsByCategory(filteredItems), [filteredItems])
 
   const handleSearch = useCallback((query: string) => {
@@ -99,7 +129,8 @@ export const AdaptiveSidebar: React.FC<AdaptiveSidebarProps> = ({
 
   const handleDensityChange = useCallback((density: 'detailed' | 'standard' | 'dense') => {
     setManualDensity(density)
-  }, [])
+    updateSetting('sidebarDensity', density)
+  }, [updateSetting])
 
   const handleItemPreview = useCallback((item: MemoData | null) => {
     setPreviewItem(item)
@@ -181,6 +212,8 @@ export const AdaptiveSidebar: React.FC<AdaptiveSidebarProps> = ({
                 selectedItem={selectedItem}
                 onItemClick={onItemSelect}
                 onItemPreview={handleItemPreview}
+                onToggleVisibility={onToggleVisibility}
+                onFocusOnCanvas={onFocusOnCanvas}
               />
             ))}
           </div>

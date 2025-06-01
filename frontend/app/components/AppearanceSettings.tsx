@@ -1,7 +1,7 @@
 // frontend/app/components/AppearanceSettings.tsx
 "use client";
 
-import { useThemeStore } from "@/app/hooks/useTheme";
+import { useThemeStore } from "../hooks/useTheme";
 import { useEffect, useState } from "react";
 
 export const AppearanceSettings = () => {

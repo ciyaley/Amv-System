@@ -7,6 +7,8 @@ export interface SidebarItemProps {
   isSelected?: boolean
   onClick?: (item: MemoData) => void
   onPreview?: (item: MemoData | null) => void
+  onToggleVisibility?: (id: string) => void
+  onFocusOnCanvas?: (id: string) => void
   previewDelay?: number
   className?: string
 }
@@ -57,6 +59,8 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   isSelected = false,
   onClick,
   onPreview,
+  onToggleVisibility,
+  onFocusOnCanvas,
   previewDelay = 300,
   className = ''
 }) => {
@@ -86,6 +90,20 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
     }
   }
 
+  const handleToggleVisibility = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onToggleVisibility) {
+      onToggleVisibility(item.id)
+    }
+  }
+
+  const handleFocusOnCanvas = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onFocusOnCanvas) {
+      onFocusOnCanvas(item.id)
+    }
+  }
+
   const icon = getItemIcon(item.type)
   const importanceClass = getImportanceClass(item.importance)
   const timeText = formatTime(item.updated)
@@ -93,23 +111,50 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   // Handle edge cases
   const displayTitle = item.title || '無題のメモ'
   const displayText = item.text || '内容なし'
+  const isVisible = item.visible !== false // デフォルトはtrue
+
+  // 非表示メモのスタイル
+  const hiddenStyle = !isVisible ? 'opacity-50 bg-gray-100' : ''
 
   if (density === 'dense') {
     return (
       <div
         ref={itemRef}
-        className={`flex items-center p-2 cursor-pointer hover:bg-gray-50 ${isSelected ? 'bg-blue-50 border-l-3 border-blue-500' : ''} ${className}`}
+        className={`flex items-center p-2 cursor-pointer hover:bg-gray-50 ${isSelected ? 'bg-blue-50 border-l-3 border-blue-500' : ''} ${hiddenStyle} ${className}`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
         role="button"
         tabIndex={0}
-        aria-label={displayTitle}
+        aria-label={`${displayTitle} を開く`}
+        data-testid="sidebar-item-main"
         title={displayTitle}
       >
         <span className="text-lg mr-2" aria-hidden="true">{icon}</span>
         <span className="text-sm truncate flex-1">{displayTitle}</span>
-        <span className="text-xs text-gray-500 ml-2">{timeText}</span>
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-gray-500">{timeText}</span>
+          {!isVisible && (
+            <button
+              onClick={handleFocusOnCanvas}
+              className="text-xs text-blue-500 hover:text-blue-700"
+              title="画面に表示"
+              aria-label="キャンバスにフォーカス"
+              data-testid="focus-on-canvas-button"
+            >
+              👁
+            </button>
+          )}
+          <button
+            onClick={handleToggleVisibility}
+            className="text-xs text-gray-500 hover:text-gray-700"
+            title={isVisible ? "隠す" : "表示"}
+            aria-label={isVisible ? "メモを隠す" : "メモを表示"}
+            data-testid="toggle-visibility-button"
+          >
+            {isVisible ? "🙈" : "👁‍🗨"}
+          </button>
+        </div>
         <div 
           className={`w-2 h-2 rounded-full ml-2 ${importanceClass}`} 
           data-testid="importance-dot"
@@ -125,13 +170,14 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
         ref={itemRef}
         className={`flex items-center p-3 cursor-pointer hover:bg-gray-50 transition-colors ${
           isSelected ? 'bg-blue-50 border-l-3 border-blue-500' : ''
-        } ${className}`}
+        } ${hiddenStyle} ${className}`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
         role="button"
         tabIndex={0}
         aria-label={`${displayTitle} を開く`}
+        data-testid="sidebar-item-main"
         data-selected={isSelected}
       >
         <span className="text-lg mr-3 flex-shrink-0" aria-hidden="true">{icon}</span>
@@ -141,6 +187,26 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="text-xs text-gray-500">{timeText}</span>
+          {!isVisible && (
+            <button
+              onClick={handleFocusOnCanvas}
+              className="text-xs text-blue-500 hover:text-blue-700"
+              title="画面に表示"
+              aria-label="キャンバスにフォーカス"
+              data-testid="focus-on-canvas-button"
+            >
+              👁
+            </button>
+          )}
+          <button
+            onClick={handleToggleVisibility}
+            className="text-xs text-gray-500 hover:text-gray-700"
+            title={isVisible ? "隠す" : "表示"}
+            aria-label={isVisible ? "メモを隠す" : "メモを表示"}
+            data-testid="toggle-visibility-button"
+          >
+            {isVisible ? "🙈" : "👁‍🗨"}
+          </button>
           {item.category && (
             <span className="text-xs text-gray-500" data-testid="category-icon">
               📄 {item.category}
@@ -162,13 +228,14 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       ref={itemRef}
       className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100 ${
         isSelected ? 'bg-blue-50 border-l-3 border-blue-500' : ''
-      } ${className}`}
+      } ${hiddenStyle} ${className}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
       role="button"
       tabIndex={0}
       aria-label={`${displayTitle} を開く`}
+      data-testid="sidebar-item-main"
       data-selected={isSelected}
     >
       <div className="flex items-start gap-3">
@@ -204,6 +271,28 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
               {item.category && (
                 <span className="text-xs text-gray-500">📄 {item.category}</span>
               )}
+            </div>
+            <div className="flex items-center gap-1">
+              {!isVisible && (
+                <button
+                  onClick={handleFocusOnCanvas}
+                  className="text-xs text-blue-500 hover:text-blue-700"
+                  title="画面に表示"
+                  aria-label="キャンバスにフォーカス"
+                  data-testid="focus-on-canvas-button"
+                >
+                  👁
+                </button>
+              )}
+              <button
+                onClick={handleToggleVisibility}
+                className="text-xs text-gray-500 hover:text-gray-700"
+                title={isVisible ? "隠す" : "表示"}
+                aria-label={isVisible ? "メモを隠す" : "メモを表示"}
+                data-testid="toggle-visibility-button"
+              >
+                {isVisible ? "🙈" : "👁‍🗨"}
+              </button>
             </div>
           </div>
         </div>

@@ -44,13 +44,13 @@ export const VirtualScrollContainer: React.FC<VirtualScrollContainerProps> = ({
   height,
   onItemSelect,
   onScroll,
-  density = 'standard',
+  density: _density = 'standard',
   renderItem: CustomItemRenderer,
   className = ''
 }) => {
   const [scrollTop, setScrollTop] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
-  const scrollTimeoutRef = useRef<NodeJS.Timeout>()
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   // 仮想スクロールの計算
   const { startIndex, endIndex, visibleItems, totalHeight, offsetY } = useVirtualScroll({
@@ -183,7 +183,7 @@ export const VirtualScrollContainer: React.FC<VirtualScrollContainerProps> = ({
             right: 0
           }}
         >
-          {visibleItemsToRender.map(({ item, index }) => {
+          {visibleItemsToRender.map(({ item }) => {
             const ItemComponent = CustomItemRenderer || DefaultItemRenderer
 
             if (CustomItemRenderer) {

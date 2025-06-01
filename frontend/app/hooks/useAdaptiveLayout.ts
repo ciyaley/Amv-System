@@ -22,6 +22,7 @@ export interface AdaptiveLayoutConfig {
 
 export interface AdaptiveLayoutOptions {
   manualDensity?: 'detailed' | 'standard' | 'dense'
+  forceVirtualScroll?: boolean
 }
 
 export const useAdaptiveLayout = (
@@ -63,7 +64,9 @@ export const useAdaptiveLayout = (
     const showSearch = itemCount > 10
 
     // 仮想スクロールの有効化判定
-    const virtualScrollEnabled = itemCount > 200
+    const virtualScrollEnabled = options.forceVirtualScroll !== undefined 
+      ? options.forceVirtualScroll 
+      : itemCount > 200
 
     // デフォルト折りたたみ設定
     const defaultCollapsed = itemCount > 50
@@ -98,5 +101,5 @@ export const useAdaptiveLayout = (
       previewMaxHeight,
       virtualScrollConfig
     }
-  }, [itemCount, options.manualDensity])
+  }, [itemCount, options.manualDensity, options.forceVirtualScroll])
 }

@@ -3,7 +3,7 @@
 
 import { TabGroup, TabList, TabPanels, Tab, TabPanel } from "@headlessui/react";
 import { AuthForm } from "./AuthForm";
-import { useAuth } from "@/app/hooks/useAuth";
+import { useAuth } from "../hooks/useAuth";
 import { useState } from "react";
 import { toast } from "sonner";
 

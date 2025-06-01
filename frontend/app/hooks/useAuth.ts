@@ -3,7 +3,7 @@
 
 import { create } from "zustand";
 import { toast } from "sonner";
-import { getStoredDir, requestDirectory } from "../../utils/fileAccess";
+import { getStoredDir, requestDirectory, clearFileSystemCache } from "../../utils/fileAccess";
 import { useEncryptionStore } from "./useEncryptionStore";
 
 interface AuthState {
@@ -55,7 +55,10 @@ export const useAuth = create<AuthState>((set) => ({
     if (!res.ok) throw new Error(data.message || "登録失敗");
 
     set({ isLoggedIn: true, uuid: data.uuid, email: data.email });
-    useEncryptionStore.setState({ password });
+    
+    // 🔑 バックエンドから返されたパスワードを設定（優先）
+    const finalPassword = data.password || password;
+    useEncryptionStore.setState({ password: finalPassword });
 
     // ディレクトリが未設定なら選択してもらう
     if (!await getStoredDir()) {
@@ -79,7 +82,10 @@ export const useAuth = create<AuthState>((set) => ({
     if (!res.ok) throw new Error(data.message || "ログイン失敗");
 
     set({ isLoggedIn: true, uuid: data.uuid, email: data.email });
-    useEncryptionStore.setState({ password });
+    
+    // 🔑 バックエンドから返されたパスワードを設定（優先）
+    const finalPassword = data.password || password;
+    useEncryptionStore.setState({ password: finalPassword });
 
     // ハンドルが無ければ初回選択
     if (!await getStoredDir()) {
@@ -120,6 +126,30 @@ export const useAuth = create<AuthState>((set) => ({
 
   /* ---------- logout ---------- */
   logout: async () => {
+    const currentState = useAuth.getState();
+    const uuid = currentState.uuid;
+    
+    // 🆕 ログアウト前にディレクトリ関連付けを保存
+    if (uuid) {
+      try {
+        const { getStoredDir, saveAccountAssociation, saveDirectoryAssociation } = 
+          await import('../../utils/fileAccess');
+        
+        const currentDir = await getStoredDir();
+        if (currentDir) {
+          const directoryName = currentDir.name || "Unknown Directory";
+          await saveAccountAssociation(uuid, directoryName);
+          await saveDirectoryAssociation(uuid, directoryName);
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Directory association saved for logout: ${directoryName}`);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to save directory association on logout:', error);
+      }
+    }
+
     try {
       await fetch(`${API_BASE_URL}/api/auth/logout`, {
         method: "POST",
@@ -128,9 +158,28 @@ export const useAuth = create<AuthState>((set) => ({
     } catch (error) {
       console.error('Logout error:', error);
     }
+    
+    // 状態をクリア
     set({ isLoggedIn: false, uuid: null, email: null });
     useEncryptionStore.setState({ password: null });
-    // ハンドルは残す（ユーザーが再ログイン時に再利用可能）
+    
+    // ファイルシステムキャッシュをクリア（メモ情報が残る問題を修正）
+    clearFileSystemCache();
+    
+    // メモデータもクリア（動的インポートでuseMemos循環参照を回避）
+    try {
+      const { useMemos } = await import('./useMemos');
+      useMemos.getState().clearAllMemos();
+    } catch (error) {
+      console.warn('Failed to clear memo data:', error);
+    }
+    
+    // 画面をリロードして未ログイン状態に完全リセット
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
+    
+    console.log('Logout completed and all cache cleared');
   },
   
   /* ---------- deleteAccount ---------- */

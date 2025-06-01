@@ -47,7 +47,13 @@ auth.post("/register", async (c) => {
   const token = await jwt.sign({ uuid, email });
   setJwtCookie(c, token);
 
-  return c.json({ message: "Registered successfully", uuid, email }, 200);
+  // 🔑 登録時もクライアントサイド暗号化用のパスワードを返す
+  return c.json({ 
+    message: "Registered successfully", 
+    uuid, 
+    email,
+    password: password // 登録時は平文パスワードをそのまま返す
+  }, 200);
 });
 
 /** ─────────────  LOGIN  ───────────── **/
@@ -70,7 +76,23 @@ auth.post("/login", async (c) => {
   const token = await jwt.sign({ uuid: userData.uuid, email });
   setJwtCookie(c, token);
 
-  return c.json({ message: "Logged in successfully", uuid: userData.uuid, email }, 200);
+  // 🔑 クライアントサイド暗号化用のパスワードを復号して返す
+  let decryptedPassword = null;
+  if (userData.encryptedPassword) {
+    try {
+      const encryptedBytes = new Uint8Array(userData.encryptedPassword);
+      decryptedPassword = await decryptJSON(encryptedBytes, c.env.JWT_SECRET);
+    } catch (decryptError) {
+      console.error("Password decryption failed during login:", decryptError);
+    }
+  }
+
+  return c.json({ 
+    message: "Logged in successfully", 
+    uuid: userData.uuid, 
+    email,
+    password: decryptedPassword // クライアントサイド暗号化用
+  }, 200);
 });
 
 /** ─────────────  LOGOUT  ───────────── **/

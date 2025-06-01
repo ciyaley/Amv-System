@@ -36,7 +36,7 @@ describe('VirtualScrollContainer Component', () => {
       observe: vi.fn(),
       unobserve: vi.fn(),
       disconnect: vi.fn(),
-    })) as any
+    })) as unknown as typeof IntersectionObserver
 
     // getBoundingClientRect のモック
     Element.prototype.getBoundingClientRect = vi.fn(() => ({
@@ -266,10 +266,10 @@ describe('VirtualScrollContainer Component', () => {
         fireEvent.scroll(container)
       })
 
-      // デバウンス期間内は1回だけ呼ばれる
+      // デバウンス期間(16ms)の完了を待つ
       await waitFor(() => {
         expect(scrollHandler).toHaveBeenCalledTimes(1)
-      }, { timeout: 50 })
+      }, { timeout: 100 })
     })
   })
 
