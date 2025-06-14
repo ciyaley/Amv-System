@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { SidebarItem } from './SidebarItem'
-import type { MemoData } from '../hooks/useMemos'
+import type { MemoData } from '../types/tools'
 
 export interface CategorySectionProps {
   category: string

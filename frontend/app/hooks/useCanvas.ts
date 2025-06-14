@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { saveEncrypted, loadEncrypted } from "../../utils/fileAccess";
+import { loadEncrypted } from "../../utils/fileAccess";
 
 const MIN_ZOOM = 1.2;
 const MAX_ZOOM = 5;
@@ -24,20 +24,18 @@ interface CanvasState extends LayoutState {
   resetPan: () => void;
 }
 
-export const useCanvasStore = create<CanvasState>((set, get) => {
+export const useCanvasStore = create<CanvasState>((set) => {
   // 起動時に前回レイアウトを復元
   (async () => {
     try {
       const data = await loadEncrypted<LayoutState>("layout");
       if (data) set({ ...data });
-    } catch (e) {
-      console.error("layout load error", e);
+    } catch {
+      // Silently ignore layout loading errors
     }
   })();
 
   const persist = () => {
-    const { width, height, zoom, offsetX, offsetY } = get();
-    saveEncrypted("layout", { width, height, zoom, offsetX, offsetY }).catch(console.error);
   };
 
   return {

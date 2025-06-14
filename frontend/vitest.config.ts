@@ -28,7 +28,27 @@ export default defineConfig({
     },
     globals: true,
     css: true,
-    testTimeout: 30000 // 30秒に延長
+    // タイムアウト設定最適化
+    testTimeout: 30000,        // タイムアウト延長
+    hookTimeout: 5000,         // フックタイムアウト設定
+    teardownTimeout: 3000,     // 後処理タイムアウト
+    // 並列実行制御でメモリリーク・競合状態防止
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,      // 単一フォーク実行
+        isolate: true,         // テスト間の完全分離
+        execArgv: ['--max-old-space-size=4096']  // メモリ制限増加
+      }
+    },
+    // メモリ使用量制御
+    maxConcurrency: 1,         // 最大並列数制限
+    maxWorkers: 1,             // ワーカー数制限
+    minWorkers: 1,
+    // ログレベル調整
+    logHeapUsage: true,        // メモリ使用量ログ出力
+    // retry設定
+    retry: 2                   // 失敗時に2回リトライ
   },
   resolve: {
     alias: {

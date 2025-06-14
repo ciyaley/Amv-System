@@ -39,6 +39,11 @@ export async function deriveAesKey(password: string, salt: Uint8Array): Promise<
 
 /** 任意オブジェクトを AES-GCM で暗号化 */
 export async function encryptData<T>(data: T, password: string) {
+  // TDD: 空パスワードの検証
+  if (!password || password.trim() === '') {
+    throw new Error('Password cannot be empty');
+  }
+  
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const key = await deriveAesKey(password, salt);
@@ -51,18 +56,18 @@ export async function encryptData<T>(data: T, password: string) {
   return {
     iv: toBase64(iv.buffer),
     salt: toBase64(salt.buffer),
-    ciphertext: toBase64(cipher),
+    encryptedData: toBase64(cipher),
   };
 }
 
 /** AES-GCM 暗号テキストを復号してオブジェクトに戻す */
 export async function decryptData<V>(
-  encrypted: { iv: string; salt: string; ciphertext: string },
+  encrypted: { iv: string; salt: string; encryptedData: string },
   password: string
 ): Promise<V> {
   const iv = fromBase64(encrypted.iv);
   const salt = fromBase64(encrypted.salt);
-  const cipher = fromBase64(encrypted.ciphertext);
+  const cipher = fromBase64(encrypted.encryptedData);
   const key = await deriveAesKey(password, salt);
   const plainBuf = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv },
@@ -72,3 +77,6 @@ export async function decryptData<V>(
   const text = decoder.decode(plainBuf);
   return JSON.parse(text) as V;
 }
+
+// Alias for backward compatibility with tests
+export const deriveKey = deriveAesKey;

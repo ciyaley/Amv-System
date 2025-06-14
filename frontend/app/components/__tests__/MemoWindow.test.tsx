@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoWindow } from '../../workspace/Memowindow'
-import { useMemos } from '../../hooks/useMemos'
-import { useCanvasStore } from '../../hooks/useCanvas'
 import { toast } from 'sonner'
-import type { MemoData } from '../../hooks/useMemos'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { useCanvasStore } from '../../hooks/useCanvas'
+import { useMemos } from '../../hooks/useMemos'
+import { MemoWindow } from '../../workspace/Memowindow'
+import type { MemoData } from '../../types/tools'
 
 // フックをモック
 vi.mock('../../hooks/useMemos')
@@ -17,6 +17,8 @@ const mockMemo: MemoData = {
   type: 'memo',
   title: 'テストメモ',
   text: 'これはテスト用のメモです',
+  content: 'これはテスト用のメモです',
+  sourceType: 'authenticated',
   x: 100,
   y: 100,
   w: 240,
@@ -110,7 +112,9 @@ describe('MemoWindow Component', () => {
       const user = userEvent.setup()
       render(<MemoWindow memo={mockMemo} />)
       
-      const contentArea = screen.getByText('これはテスト用のメモです').parentElement!
+      const contentElement = screen.getByText('これはテスト用のメモです')
+      const contentArea = contentElement.parentElement
+      if (!contentArea) throw new Error('Content area not found')
       await user.dblClick(contentArea)
       
       expect(screen.getByPlaceholderText('メモの内容')).toBeInTheDocument()
@@ -122,7 +126,9 @@ describe('MemoWindow Component', () => {
       render(<MemoWindow memo={mockMemo} />)
       
       // 編集モードに入る
-      const contentArea = screen.getByText('これはテスト用のメモです').parentElement!
+      const contentElement = screen.getByText('これはテスト用のメモです')
+      const contentArea = contentElement.parentElement
+      if (!contentArea) throw new Error('Content area not found')
       await user.dblClick(contentArea)
       
       // タイトルとテキストを変更
@@ -134,14 +140,14 @@ describe('MemoWindow Component', () => {
       await user.clear(textArea)
       await user.type(textArea, '更新されたテキスト')
       
-      // 保存ボタンをクリック
-      await user.click(screen.getByText('保存'))
+      // 完了ボタンをクリック
+      await user.click(screen.getByText('完了'))
       
       expect(mockUpdateMemo).toHaveBeenCalledWith('memo_test_123', {
         title: '更新されたタイトル',
         text: '更新されたテキスト'
       })
-      expect(toast.success).toHaveBeenCalledWith('メモを保存しました')
+      // handleSaveは自動保存でtoastを表示しない
     })
 
     it('should cancel edit when cancel button is clicked', async () => {
@@ -149,7 +155,9 @@ describe('MemoWindow Component', () => {
       render(<MemoWindow memo={mockMemo} />)
       
       // 編集モードに入る
-      const contentArea = screen.getByText('これはテスト用のメモです').parentElement!
+      const contentElement = screen.getByText('これはテスト用のメモです')
+      const contentArea = contentElement.parentElement
+      if (!contentArea) throw new Error('Content area not found')
       await user.dblClick(contentArea)
       
       // テキストを変更
@@ -193,8 +201,11 @@ describe('MemoWindow Component', () => {
       await user.click(screen.getByTitle('タグ'))
       
       // タグコンテナ内の削除ボタンを探す
-      const tagElements = screen.getByText('テスト').parentElement!
-      const removeButton = tagElements.querySelector('button')!
+      const tagElement = screen.getByText('テスト')
+      const tagElements = tagElement.parentElement
+      if (!tagElements) throw new Error('Tag container not found')
+      const removeButton = tagElements.querySelector('button')
+      if (!removeButton) throw new Error('Remove button not found')
       
       await user.click(removeButton)
       

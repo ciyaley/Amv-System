@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { CategorySection } from '../CategorySection'
-import type { MemoData } from '../../hooks/useMemos'
+import type { MemoData } from '../../types/tools'
 
 // テストデータ
 const createMockMemo = (overrides?: Partial<MemoData>): MemoData => ({
@@ -10,6 +10,8 @@ const createMockMemo = (overrides?: Partial<MemoData>): MemoData => ({
   type: 'memo',
   title: 'Test Memo',
   text: 'Test content',
+  content: 'Test content',
+  sourceType: 'guest',
   x: 100,
   y: 100,
   w: 240,

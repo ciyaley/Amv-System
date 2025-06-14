@@ -4,11 +4,15 @@ import type { Env } from "../config/env";
 export const devKVManager = new Hono<{ Bindings: Env }>();
 
 // 開発環境でのみ利用可能なKV管理エンドポイント
-const isDev = () => true; // 開発環境として常に有効（本番デプロイ時は別途制御）
+const isDev = (c: any) => {
+  // SITE_URLがlocalhostを含む場合のみ開発環境とみなす
+  const siteUrl = c.env.SITE_URL || "";
+  return siteUrl.includes("localhost") || siteUrl.includes("127.0.0.1") || siteUrl.includes("dev");
+};
 
 // KV内の全ユーザー一覧を取得
 devKVManager.get("/users", async (c) => {
-  if (!isDev()) {
+  if (!isDev(c)) {
     return c.json({ error: "Not available in production" }, 403);
   }
 
@@ -41,7 +45,7 @@ devKVManager.get("/users", async (c) => {
 
 // 特定ユーザーの詳細情報を取得
 devKVManager.get("/users/:email", async (c) => {
-  if (!isDev()) {
+  if (!isDev(c)) {
     return c.json({ error: "Not available in production" }, 403);
   }
 
@@ -69,7 +73,7 @@ devKVManager.get("/users/:email", async (c) => {
 
 // 特定ユーザーを削除
 devKVManager.delete("/users/:email", async (c) => {
-  if (!isDev()) {
+  if (!isDev(c)) {
     return c.json({ error: "Not available in production" }, 403);
   }
 
@@ -92,7 +96,7 @@ devKVManager.delete("/users/:email", async (c) => {
 
 // 全ユーザーデータを削除（開発用）
 devKVManager.delete("/users", async (c) => {
-  if (!isDev()) {
+  if (!isDev(c)) {
     return c.json({ error: "Not available in production" }, 403);
   }
 

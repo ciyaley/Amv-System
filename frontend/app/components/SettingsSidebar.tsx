@@ -1,8 +1,8 @@
 // frontend/app/components/SettingsSidebar.tsx
 "use client";
 
-import { SettingsTab, useSettingsStore } from "../hooks/useSettings";
 import { useId } from "react";
+import { SettingsTab, useSettingsStore } from "../hooks/useSettings";
 
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "general",    label: "一般設定"    },
@@ -33,6 +33,7 @@ export const SettingsSidebar = () => {
                 onClick={() => setTab(id)}
                 className={`w-full text-left px-3 py-2 rounded transition
                   ${selected ? "bg-slate-500 font-bold" : "hover:bg-slate-600"}`}
+                data-testid={`${id}-settings-tab`}
               >
                 {label}
               </button>

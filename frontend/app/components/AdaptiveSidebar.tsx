@@ -1,11 +1,12 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import { XMarkIcon, Bars3Icon } from '@heroicons/react/24/outline'
-import { SidebarSearch } from './SidebarSearch'
-import { CategorySection } from './CategorySection'
-import { VirtualScrollContainer } from './VirtualScrollContainer'
+import { searchEngine } from '../../utils/searchEngine'
 import { useAdaptiveLayout } from '../hooks/useAdaptiveLayout'
 import { useSettings } from '../hooks/useSettings'
-import type { MemoData } from '../hooks/useMemos'
+import { CategorySection } from './CategorySection'
+import { SidebarSearch } from './SidebarSearch'
+import { VirtualScrollContainer } from './VirtualScrollContainer'
+import type { MemoData } from '../types/tools'
 
 export interface AdaptiveSidebarProps {
   items: MemoData[]
@@ -66,24 +67,25 @@ const groupItemsByCategory = (items: MemoData[]): Record<string, MemoData[]> => 
   return grouped
 }
 
-const filterItems = (items: MemoData[], query: string): MemoData[] => {
+// TF-IDF検索エンジンを使用（インポート済み）
+
+// TF-IDF検索エンジンを使用した高度検索
+const searchItems = (items: MemoData[], query: string): MemoData[] => {
   if (!query.trim()) return items
   
-  const lowercaseQuery = query.toLowerCase().trim()
+  // 短いクエリ（1-2文字）の場合はファジー検索を使用
+  if (query.trim().length <= 2) {
+    const fuzzyResults = searchEngine.fuzzySearch(query, items, {
+      maxResults: 100,
+      threshold: 0.2
+    });
+    return fuzzyResults.map((result: { memo: MemoData }) => result.memo);
+  }
   
-  return items.filter(item => {
-    const titleMatch = item.title.toLowerCase().includes(lowercaseQuery)
-    const textMatch = item.text?.toLowerCase().includes(lowercaseQuery) || false
-    const tagMatch = item.tags?.some(tag => tag.toLowerCase().includes(lowercaseQuery)) || false
-    const categoryMatch = item.category?.toLowerCase().includes(lowercaseQuery) || false
-    
-    // より厳密な検索：完全一致も考慮
-    const exactTitleMatch = item.title.toLowerCase() === lowercaseQuery
-    const exactTagMatch = item.tags?.some(tag => tag.toLowerCase() === lowercaseQuery) || false
-    
-    // 完全一致があれば優先、なければ部分一致
-    return exactTitleMatch || exactTagMatch || titleMatch || textMatch || tagMatch || categoryMatch
-  })
+  // 長いクエリの場合はTF-IDF検索を使用
+  const searchResults = searchEngine.search(query, items);
+  
+  return searchResults.map((result: { memo: MemoData }) => result.memo);
 }
 
 export const AdaptiveSidebar: React.FC<AdaptiveSidebarProps> = ({
@@ -104,7 +106,15 @@ export const AdaptiveSidebar: React.FC<AdaptiveSidebarProps> = ({
   const [manualDensity, setManualDensity] = useState<'detailed' | 'standard' | 'dense' | undefined>()
   const [previewItem, setPreviewItem] = useState<MemoData | null>(null)
 
-  const filteredItems = useMemo(() => filterItems(items, searchQuery), [items, searchQuery])
+  // TF-IDF検索エンジンによる高度検索
+  const filteredItems = useMemo(() => searchItems(items, searchQuery), [items, searchQuery])
+  
+  // メモが変更されたら検索エンジンのインデックスを更新
+  useEffect(() => {
+    if (items.length > 0) {
+      searchEngine.indexMemos(items);
+    }
+  }, [items])
   
   // 検索状態を考慮したレイアウト設定（元のアイテム数で基本設定を決定）
   const effectiveDensity = manualDensity || settings.sidebarDensity
@@ -244,6 +254,7 @@ export const AdaptiveSidebar: React.FC<AdaptiveSidebarProps> = ({
         `}
         role="complementary"
         aria-label="アイテム一覧"
+        data-testid="adaptive-sidebar"
       >
         {sidebarContent}
       </aside>

@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { MessageHelpers, showMessage, getGlobalMessageHandler } from "../../utils/messageSystem";
 import { useAuth } from "../hooks/useAuth";
-import { toast } from "sonner";
 
 interface AuthFormProps {
   mode?: "login" | "register";
 }
 
 export const AuthForm = ({ mode: initialMode = "login" }: AuthFormProps = {}) => {
+  const router = useRouter();
   const { login, register } = useAuth();
   const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [email, setEmail] = useState("");
@@ -63,17 +65,49 @@ export const AuthForm = ({ mode: initialMode = "login" }: AuthFormProps = {}) =>
     try {
       if (mode === "login") {
         await login(email, password);
-        toast.success("ログイン成功");
+        showMessage(MessageHelpers.loginSuccess({
+          operation: 'login',
+          component: 'AuthForm'
+        }));
       } else {
         await register(email, password);
-        toast.success("登録成功");
+        showMessage(MessageHelpers.registerSuccess({
+          operation: 'register',
+          component: 'AuthForm'
+        }));
       }
       // フォームをクリア
       setEmail("");
       setPassword("");
       setConfirmPassword("");
+      
+      // ワークスペースにリダイレクト
+      router.push("/workspace");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "エラーが発生しました";
+      const context = {
+        operation: mode === "login" ? 'login' : 'register',
+        component: 'AuthForm'
+      };
+
+      const handler = getGlobalMessageHandler();
+      if (handler) {
+        const errorMessage = mode === "login" 
+          ? MessageHelpers.loginFailed(context)
+          : MessageHelpers.registerFailed(context);
+        
+        handler.show(errorMessage);
+      }
+
+      // フォームエラー表示のためのフォールバック
+      let message = "エラーが発生しました";
+      if (err instanceof Error) {
+        message = err.message;
+      } else if (typeof err === 'object' && err !== null && 'message' in err) {
+        message = String((err as { message: unknown }).message);
+      } else if (typeof err === 'string') {
+        message = err;
+      }
+      
       setErrors({ general: message });
     } finally {
       setLoading(false);
@@ -81,7 +115,34 @@ export const AuthForm = ({ mode: initialMode = "login" }: AuthFormProps = {}) =>
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-6">
+    <div className="w-full max-w-md mx-auto p-6" data-testid="auth-form">
+      <div className="flex mb-6 space-x-2">
+        <button
+          type="button"
+          onClick={() => setMode("login")}
+          className={`flex-1 px-4 py-2 rounded ${
+            mode === "login" 
+              ? "bg-blue-500 text-white" 
+              : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+          }`}
+          data-testid="login-tab"
+        >
+          ログイン
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("register")}
+          className={`flex-1 px-4 py-2 rounded ${
+            mode === "register" 
+              ? "bg-blue-500 text-white" 
+              : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+          }`}
+          data-testid="register-tab"
+        >
+          新規登録
+        </button>
+      </div>
+      
       <h2 className="text-2xl font-bold mb-6 text-center">
         {mode === "login" ? "ログイン" : "新規登録"}
       </h2>
@@ -98,9 +159,10 @@ export const AuthForm = ({ mode: initialMode = "login" }: AuthFormProps = {}) =>
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            data-testid="email-input"
           />
           {errors.email && (
-            <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+            <p className="text-red-500 text-sm mt-1" data-testid="auth-error">{errors.email}</p>
           )}
         </div>
 
@@ -115,9 +177,10 @@ export const AuthForm = ({ mode: initialMode = "login" }: AuthFormProps = {}) =>
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            data-testid="password-input"
           />
           {errors.password && (
-            <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+            <p className="text-red-500 text-sm mt-1" data-testid="auth-error">{errors.password}</p>
           )}
         </div>
 
@@ -133,21 +196,23 @@ export const AuthForm = ({ mode: initialMode = "login" }: AuthFormProps = {}) =>
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
+              data-testid="confirm-password-input"
             />
             {errors.confirmPassword && (
-              <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
+              <p className="text-red-500 text-sm mt-1" data-testid="auth-error">{errors.confirmPassword}</p>
             )}
           </div>
         )}
 
         {errors.general && (
-          <p className="text-red-500 text-sm text-center">{errors.general}</p>
+          <p className="text-red-500 text-sm text-center" data-testid="auth-error">{errors.general}</p>
         )}
 
         <button
           type="submit"
           className="w-full rounded bg-slate-800 p-2 text-white hover:bg-slate-700 disabled:opacity-50"
           disabled={loading}
+          data-testid={loading ? "auth-loading" : mode === "login" ? "login-button" : "register-button"}
         >
           {loading ? "処理中..." : mode === "login" ? "ログイン" : "登録"}
         </button>

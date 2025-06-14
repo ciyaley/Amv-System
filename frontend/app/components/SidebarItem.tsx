@@ -1,5 +1,5 @@
 import React, { useRef, useCallback } from 'react'
-import type { MemoData } from '../hooks/useMemos'
+import type { MemoData } from '../types/tools'
 
 export interface SidebarItemProps {
   item: MemoData
@@ -127,7 +127,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
         role="button"
         tabIndex={0}
         aria-label={`${displayTitle} を開く`}
-        data-testid="sidebar-item-main"
+        data-testid={`sidebar-memo-item-${item.id}`}
         title={displayTitle}
       >
         <span className="text-lg mr-2" aria-hidden="true">{icon}</span>

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
-import { verify } from 'hono/jwt';
+import { createJWTUtil } from '../utils/jwt';
 import type { Env } from '../config/env';
 
 const directoryManager = new Hono<{ Bindings: Env }>();
@@ -20,8 +20,14 @@ directoryManager.post('/associate', async (c) => {
       return c.json({ message: 'Unauthorized' }, 401);
     }
 
-    const payload = await verify(token, c.env.JWT_SECRET);
-    const accountUuid = payload.uuid as string;
+    const jwt = createJWTUtil(c.env.JWT_SECRET);
+    const payload = await jwt.verify(token);
+    
+    if (!payload) {
+      return c.json({ message: 'Invalid token' }, 401);
+    }
+    
+    const accountUuid = payload.uuid;
 
     const body = await c.req.json();
     const { directoryPath } = body;
@@ -62,8 +68,14 @@ directoryManager.get('/get/:accountUuid', async (c) => {
       return c.json({ message: 'Unauthorized' }, 401);
     }
 
-    const payload = await verify(token, c.env.JWT_SECRET);
-    const requestingAccountUuid = payload.uuid as string;
+    const jwt = createJWTUtil(c.env.JWT_SECRET);
+    const payload = await jwt.verify(token);
+    
+    if (!payload) {
+      return c.json({ message: 'Invalid token' }, 401);
+    }
+    
+    const requestingAccountUuid = payload.uuid;
     const targetAccountUuid = c.req.param('accountUuid');
 
     // 自分のアカウントのみアクセス可能
@@ -101,8 +113,14 @@ directoryManager.get('/current', async (c) => {
       return c.json({ message: 'Unauthorized' }, 401);
     }
 
-    const payload = await verify(token, c.env.JWT_SECRET);
-    const accountUuid = payload.uuid as string;
+    const jwt = createJWTUtil(c.env.JWT_SECRET);
+    const payload = await jwt.verify(token);
+    
+    if (!payload) {
+      return c.json({ message: 'Invalid token' }, 401);
+    }
+    
+    const accountUuid = payload.uuid;
 
     // KVから取得
     const kvKey = `directory:${accountUuid}`;
@@ -134,8 +152,14 @@ directoryManager.delete('/remove', async (c) => {
       return c.json({ message: 'Unauthorized' }, 401);
     }
 
-    const payload = await verify(token, c.env.JWT_SECRET);
-    const accountUuid = payload.uuid as string;
+    const jwt = createJWTUtil(c.env.JWT_SECRET);
+    const payload = await jwt.verify(token);
+    
+    if (!payload) {
+      return c.json({ message: 'Invalid token' }, 401);
+    }
+    
+    const accountUuid = payload.uuid;
 
     // KVから削除
     const kvKey = `directory:${accountUuid}`;

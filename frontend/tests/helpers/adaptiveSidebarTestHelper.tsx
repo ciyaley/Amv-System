@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { render, RenderResult } from '@testing-library/react'
 import { vi } from 'vitest'
 import { AdaptiveSidebar } from '../../app/components/AdaptiveSidebar'
-import type { MemoData } from '../../app/hooks/useMemos'
+import type { MemoData } from '../../app/types/tools'
 
 export interface AdaptiveSidebarTestHelperProps {
   items: MemoData[]
@@ -52,8 +52,9 @@ export const createMockHandlers = () => ({
 export const createTestMemos = (): MemoData[] => [
   {
     id: 'memo_work_1',
-    type: 'memo',
+    type: 'memo' as const,
     title: '重要な会議メモ',
+    content: '明日の会議について話し合う内容をまとめる',
     text: '明日の会議について話し合う内容をまとめる',
     x: 100,
     y: 100,
@@ -64,12 +65,14 @@ export const createTestMemos = (): MemoData[] => [
     created: new Date('2024-01-01T10:00:00Z').toISOString(),
     updated: new Date('2024-01-01T10:00:00Z').toISOString(),
     importance: 'high',
-    category: 'Work'
+    category: 'Work',
+    sourceType: 'authenticated'
   },
   {
     id: 'memo_personal_1',
-    type: 'memo',
+    type: 'memo' as const,
     title: 'タスクリスト',
+    content: '今日やるべきことのリスト',
     text: '今日やるべきことのリスト',
     x: 200,
     y: 200,
@@ -80,12 +83,14 @@ export const createTestMemos = (): MemoData[] => [
     created: new Date('2024-01-02T10:00:00Z').toISOString(),
     updated: new Date('2024-01-02T10:00:00Z').toISOString(),
     importance: 'medium',
-    category: 'Personal'
+    category: 'Personal',
+    sourceType: 'authenticated'
   },
   {
     id: 'memo_personal_2',
-    type: 'memo',
+    type: 'memo' as const,
     title: '買い物リスト',
+    content: '今日買うもの：パン、牛乳、卵',
     text: '今日買うもの：パン、牛乳、卵',
     x: 300,
     y: 300,
@@ -96,12 +101,14 @@ export const createTestMemos = (): MemoData[] => [
     created: new Date('2024-01-03T10:00:00Z').toISOString(),
     updated: new Date('2024-01-03T10:00:00Z').toISOString(),
     importance: 'low',
-    category: 'Personal'
+    category: 'Personal',
+    sourceType: 'authenticated'
   },
   {
     id: 'memo_work_2',
-    type: 'memo',
+    type: 'memo' as const,
     title: 'その他のメモ',
+    content: 'プロジェクト関連のメモ',
     text: 'プロジェクト関連のメモ',
     x: 400,
     y: 400,
@@ -112,12 +119,14 @@ export const createTestMemos = (): MemoData[] => [
     created: new Date('2024-01-04T10:00:00Z').toISOString(),
     updated: new Date('2024-01-04T10:00:00Z').toISOString(),
     importance: 'medium',
-    category: 'Work'
+    category: 'Work',
+    sourceType: 'authenticated'
   },
   {
     id: 'memo_project_1',
-    type: 'memo',
+    type: 'memo' as const,
     title: 'プロジェクト企画書',
+    content: '新しいプロジェクトの企画書を作成',
     text: '新しいプロジェクトの企画書を作成',
     x: 500,
     y: 500,
@@ -128,12 +137,14 @@ export const createTestMemos = (): MemoData[] => [
     created: new Date('2024-01-05T10:00:00Z').toISOString(),
     updated: new Date('2024-01-05T10:00:00Z').toISOString(),
     importance: 'high',
-    category: 'Project'
+    category: 'Project',
+    sourceType: 'authenticated'
   },
   {
     id: 'memo_project_2',
-    type: 'memo',
+    type: 'memo' as const,
     title: '進捗レポート',
+    content: '週次の進捗レポートを作成',
     text: '週次の進捗レポートを作成',
     x: 600,
     y: 600,
@@ -144,13 +155,15 @@ export const createTestMemos = (): MemoData[] => [
     created: new Date('2024-01-06T10:00:00Z').toISOString(),
     updated: new Date('2024-01-06T10:00:00Z').toISOString(),
     importance: 'medium',
-    category: 'Project'
+    category: 'Project',
+    sourceType: 'authenticated'
   },
   // 追加データ（検索ボックス表示のため11件以上にする）
   {
     id: 'memo_work_3',
-    type: 'memo',
+    type: 'memo' as const,
     title: 'システム設計書',
+    content: 'システムアーキテクチャの設計書',
     text: 'システムアーキテクチャの設計書',
     x: 700,
     y: 700,
@@ -161,12 +174,14 @@ export const createTestMemos = (): MemoData[] => [
     created: new Date('2024-01-07T10:00:00Z').toISOString(),
     updated: new Date('2024-01-07T10:00:00Z').toISOString(),
     importance: 'high',
-    category: 'Work'
+    category: 'Work',
+    sourceType: 'authenticated'
   },
   {
     id: 'memo_personal_3',
-    type: 'memo',
+    type: 'memo' as const,
     title: '読書リスト',
+    content: '今月読む予定の本のリスト',
     text: '今月読む予定の本のリスト',
     x: 800,
     y: 800,
@@ -177,12 +192,14 @@ export const createTestMemos = (): MemoData[] => [
     created: new Date('2024-01-08T10:00:00Z').toISOString(),
     updated: new Date('2024-01-08T10:00:00Z').toISOString(),
     importance: 'low',
-    category: 'Personal'
+    category: 'Personal',
+    sourceType: 'authenticated'
   },
   {
     id: 'memo_project_3',
-    type: 'memo',
+    type: 'memo' as const,
     title: 'テスト計画書',
+    content: 'プロジェクトのテスト計画と戦略',
     text: 'プロジェクトのテスト計画と戦略',
     x: 900,
     y: 900,
@@ -193,12 +210,14 @@ export const createTestMemos = (): MemoData[] => [
     created: new Date('2024-01-09T10:00:00Z').toISOString(),
     updated: new Date('2024-01-09T10:00:00Z').toISOString(),
     importance: 'medium',
-    category: 'Project'
+    category: 'Project',
+    sourceType: 'authenticated'
   },
   {
     id: 'memo_work_4',
-    type: 'memo',
+    type: 'memo' as const,
     title: 'データベース設計',
+    content: 'データベースのスキーマ設計',
     text: 'データベースのスキーマ設計',
     x: 1000,
     y: 1000,
@@ -209,12 +228,14 @@ export const createTestMemos = (): MemoData[] => [
     created: new Date('2024-01-10T10:00:00Z').toISOString(),
     updated: new Date('2024-01-10T10:00:00Z').toISOString(),
     importance: 'high',
-    category: 'Work'
+    category: 'Work',
+    sourceType: 'authenticated'
   },
   {
     id: 'memo_personal_4',
-    type: 'memo',
+    type: 'memo' as const,
     title: '健康管理メモ',
+    content: '運動と食事の記録',
     text: '運動と食事の記録',
     x: 1100,
     y: 1100,
@@ -225,6 +246,7 @@ export const createTestMemos = (): MemoData[] => [
     created: new Date('2024-01-11T10:00:00Z').toISOString(),
     updated: new Date('2024-01-11T10:00:00Z').toISOString(),
     importance: 'medium',
-    category: 'Personal'
+    category: 'Personal',
+    sourceType: 'authenticated'
   }
 ]

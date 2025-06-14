@@ -1,9 +1,9 @@
 // tests/components/__tests__/GeneralSettings.save-location.test.tsx
-import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { useAuth } from '../../hooks/useAuth'
-import { getStoredDir, requestDirectory } from '../../../utils/fileAccess'
 import { toast } from 'sonner'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { getStoredDir, requestDirectory } from '../../../utils/fileAccess'
+import { useAuth } from '../../hooks/useAuth'
 import { GeneralSettings } from '../GeneralSettings'
 
 // モック設定

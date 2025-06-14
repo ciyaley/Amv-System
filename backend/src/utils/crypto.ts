@@ -4,7 +4,7 @@ export async function deriveKey(pass: string, salt: Uint8Array) {
     "raw", enc.encode(pass), { name: "PBKDF2" }, false, ["deriveKey"]
   );
   return crypto.subtle.deriveKey(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations: 100_000 },
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations: 250_000 },
     keyMaterial,
     { name: "AES-GCM", length: 256 },
     false,

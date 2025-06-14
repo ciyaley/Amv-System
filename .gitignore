@@ -57,6 +57,33 @@ Thumbs.db
 Amv_system/
 exports/
 
+# Temporary and debug files
+debug-*.js
+test-*.js
+integration-test.js
+final-verification-test.js
+*.log
+*.txt
+cookies.txt
+
+# Test and performance results
+test-results.json
+e2e-results.json
+performance-results.json
+lighthouse-report.html
+
+# HTTP headers and authentication files
+headers*.txt
+*-headers.txt
+*-cookies.txt
+login-*.txt
+test-*.txt
+
 # Project docs (keep these)
 !CLAUDE.md
 !RDv1.1.3.md
+!RDv1.1.4-implementation-plan.md
+!RDv1.1.5.1.md
+!RDv1.1.6.md
+!TDD-implementation-plan.md
+!COMPONENT_REQUIREMENTS_MAPPING.md

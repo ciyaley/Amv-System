@@ -23,48 +23,49 @@ const DEFAULT_SETTINGS: AppSettings = {
 }
 
 // 設定値の妥当性をチェック
-const validateSettings = (settings: any): AppSettings => {
+const validateSettings = (settings: unknown): AppSettings => {
   const validated: AppSettings = { ...DEFAULT_SETTINGS }
   
   if (settings && typeof settings === 'object') {
+    const settingsObj = settings as Partial<AppSettings>;
     // sidebarDensity の検証
-    if (['detailed', 'standard', 'dense'].includes(settings.sidebarDensity)) {
-      validated.sidebarDensity = settings.sidebarDensity
+    if (settingsObj.sidebarDensity && ['detailed', 'standard', 'dense'].includes(settingsObj.sidebarDensity)) {
+      validated.sidebarDensity = settingsObj.sidebarDensity
     }
     
     // theme の検証
-    if (['light', 'dark'].includes(settings.theme)) {
-      validated.theme = settings.theme
+    if (settingsObj.theme && ['light', 'dark'].includes(settingsObj.theme)) {
+      validated.theme = settingsObj.theme
     }
     
     // language の検証
-    if (['ja', 'en'].includes(settings.language)) {
-      validated.language = settings.language
+    if (settingsObj.language && ['ja', 'en'].includes(settingsObj.language)) {
+      validated.language = settingsObj.language
     }
     
     // boolean 値の検証
-    if (typeof settings.autoSave === 'boolean') {
-      validated.autoSave = settings.autoSave
+    if (typeof settingsObj.autoSave === 'boolean') {
+      validated.autoSave = settingsObj.autoSave
     }
     
-    if (typeof settings.sidebarCollapsed === 'boolean') {
-      validated.sidebarCollapsed = settings.sidebarCollapsed
+    if (typeof settingsObj.sidebarCollapsed === 'boolean') {
+      validated.sidebarCollapsed = settingsObj.sidebarCollapsed
     }
     
-    if (typeof settings.showSearchByDefault === 'boolean') {
-      validated.showSearchByDefault = settings.showSearchByDefault
+    if (typeof settingsObj.showSearchByDefault === 'boolean') {
+      validated.showSearchByDefault = settingsObj.showSearchByDefault
     }
     
     // number 値の検証
-    if (typeof settings.virtualScrollThreshold === 'number' && settings.virtualScrollThreshold > 0) {
-      validated.virtualScrollThreshold = settings.virtualScrollThreshold
+    if (typeof settingsObj.virtualScrollThreshold === 'number' && settingsObj.virtualScrollThreshold > 0) {
+      validated.virtualScrollThreshold = settingsObj.virtualScrollThreshold
     }
   }
   
   return validated
 }
 
-// ファイルシステムからの読み込み
+// ファイルシステムからの読み込み（localStorageフォールバック付き）
 const loadSettings = async (): Promise<AppSettings> => {
   try {
     if (typeof window === 'undefined') {
@@ -77,22 +78,51 @@ const loadSettings = async (): Promise<AppSettings> => {
     }
     
     return validateSettings(stored)
-  } catch (error) {
-    console.warn('Failed to load settings from file system:', error)
+  } catch {
+    
+    // ファイルシステムが失敗した場合、localStorageからフォールバック
+    try {
+      const localStored = localStorage.getItem('amv-settings')
+      if (localStored) {
+        const parsed = JSON.parse(localStored)
+        return validateSettings(parsed)
+      }
+    } catch {
+      // Silently ignore localStorage errors
+    }
+    
     return DEFAULT_SETTINGS
   }
 }
 
-// ファイルシステムへの保存
+// ファイルシステムへの保存（localStorageフォールバック付き）
 const saveSettings = async (settings: AppSettings): Promise<void> => {
   try {
     if (typeof window === 'undefined') {
       return
     }
     
-    await saveSettingsToFile(settings)
+    const settingsData = {
+      theme: { mode: settings.theme },
+      canvas: { language: settings.language },
+      general: { 
+        sidebarDensity: settings.sidebarDensity,
+        autoSave: settings.autoSave,
+        sidebarCollapsed: settings.sidebarCollapsed,
+        showSearchByDefault: settings.showSearchByDefault,
+        virtualScrollThreshold: settings.virtualScrollThreshold
+      },
+      version: '1.0.0'
+    };
+    await saveSettingsToFile(settingsData)
   } catch (error) {
-    console.warn('Failed to save settings to file system:', error)
+    
+    // ファイルシステムが失敗した場合、localStorageにフォールバック
+    try {
+      localStorage.setItem('amv-settings', JSON.stringify(settings))
+    } catch {
+      throw error  // 元のエラーをスロー
+    }
   }
 }
 
@@ -129,13 +159,11 @@ export const useSettings = () => {
       
       // 妥当でない場合は更新しない
       if (validatedSettings[key] !== value) {
-        console.warn(`Invalid value for ${key}:`, value)
         return prevSettings
       }
       
       // 非同期で保存（エラーが発生してもUIの更新は継続）
-      saveSettings(validatedSettings).catch(error => {
-        console.error('Failed to save settings:', error)
+      saveSettings(validatedSettings).catch(() => {
       })
       
       return validatedSettings
@@ -143,14 +171,13 @@ export const useSettings = () => {
   }, [])
   
   // 複数設定項目の一括更新
-  const updateSettings = useCallback((updates: Partial<AppSettings>) => {
-    setSettings(prevSettings => {
-      const newSettings = { ...prevSettings, ...updates }
+  const updateSettings = useCallback(async (updates: Partial<AppSettings>) => {
+    setSettings(currentSettings => {
+      const newSettings = { ...currentSettings, ...updates }
       const validatedSettings = validateSettings(newSettings)
       
       // 非同期で保存（エラーが発生してもUIの更新は継続）
-      saveSettings(validatedSettings).catch(error => {
-        console.error('Failed to save settings:', error)
+      saveSettings(validatedSettings).catch(() => {
       })
       
       return validatedSettings
@@ -158,13 +185,15 @@ export const useSettings = () => {
   }, [])
   
   // 設定のリセット
-  const resetSettings = useCallback(() => {
+  const resetSettings = useCallback(async () => {
     setSettings(DEFAULT_SETTINGS)
     
     // デフォルト設定を保存
-    saveSettings(DEFAULT_SETTINGS).catch(error => {
-      console.error('Failed to save default settings:', error)
-    })
+    try {
+      await saveSettings(DEFAULT_SETTINGS)
+    } catch (error) {
+      throw error
+    }
   }, [])
   
   // 設定のエクスポート
@@ -192,13 +221,11 @@ export const useSettings = () => {
       setSettings(validatedSettings)
       
       // 非同期で保存
-      saveSettings(validatedSettings).catch(error => {
-        console.error('Failed to save imported settings:', error)
+      saveSettings(validatedSettings).catch(() => {
       })
       
       return true
-    } catch (error) {
-      console.warn('Failed to import settings:', error)
+    } catch {
       return false
     }
   }, [])

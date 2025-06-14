@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { useAuth } from '@/hooks/useAuth'
 import { AuthForm } from '../AuthForm'
-import { useAuth } from '../../hooks/useAuth'
 
 // useAuthフックをモック
 vi.mock('../../hooks/useAuth')
@@ -33,7 +33,7 @@ describe('AuthForm Component', () => {
       expect(screen.getByRole('heading', { name: 'ログイン' })).toBeInTheDocument()
       expect(screen.getByLabelText('メールアドレス')).toBeInTheDocument()
       expect(screen.getByLabelText('パスワード')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'ログイン' })).toBeInTheDocument()
+      expect(screen.getByTestId('login-button')).toBeInTheDocument()
     })
 
     it('should switch to register form when clicking switch button', async () => {
@@ -43,8 +43,8 @@ describe('AuthForm Component', () => {
       const switchButton = screen.getByText('アカウントを作成')
       await user.click(switchButton)
       
-      expect(screen.getByText('新規登録')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: '登録' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: '新規登録' })).toBeInTheDocument()
+      expect(screen.getByTestId('register-button')).toBeInTheDocument()
     })
   })
 
@@ -57,7 +57,7 @@ describe('AuthForm Component', () => {
       
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
       await user.type(screen.getByLabelText('パスワード'), 'ValidPassword123!')
-      await user.click(screen.getByRole('button', { name: 'ログイン' }))
+      await user.click(screen.getByTestId('login-button'))
       
       await waitFor(() => {
         expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'ValidPassword123!')
@@ -72,7 +72,7 @@ describe('AuthForm Component', () => {
       
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
       await user.type(screen.getByLabelText('パスワード'), 'WrongPassword')
-      await user.click(screen.getByRole('button', { name: 'ログイン' }))
+      await user.click(screen.getByTestId('login-button'))
       
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument()
@@ -95,7 +95,7 @@ describe('AuthForm Component', () => {
       await user.type(screen.getByLabelText('メールアドレス'), 'new@example.com')
       await user.type(screen.getByLabelText('パスワード'), 'ValidPassword123!')
       await user.type(screen.getByLabelText('パスワード（確認）'), 'ValidPassword123!')
-      await user.click(screen.getByRole('button', { name: '登録' }))
+      await user.click(screen.getByTestId('register-button'))
       
       await waitFor(() => {
         expect(mockRegister).toHaveBeenCalledWith('new@example.com', 'ValidPassword123!')
@@ -109,7 +109,7 @@ describe('AuthForm Component', () => {
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
       await user.type(screen.getByLabelText('パスワード'), 'Short1')
       await user.type(screen.getByLabelText('パスワード（確認）'), 'Short1')
-      await user.click(screen.getByRole('button', { name: '登録' }))
+      await user.click(screen.getByTestId('register-button'))
       
       expect(screen.getByText('パスワードは12文字以上で、英字と数字を含む必要があります')).toBeInTheDocument()
     })
@@ -120,7 +120,7 @@ describe('AuthForm Component', () => {
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
       await user.type(screen.getByLabelText('パスワード'), 'ValidPassword123!')
       await user.type(screen.getByLabelText('パスワード（確認）'), 'DifferentPassword123!')
-      await user.click(screen.getByRole('button', { name: '登録' }))
+      await user.click(screen.getByTestId('register-button'))
       
       expect(screen.getByText('パスワードが一致しません')).toBeInTheDocument()
     })
@@ -136,7 +136,7 @@ describe('AuthForm Component', () => {
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
       await user.type(screen.getByLabelText('パスワード'), 'ValidPassword123!')
       
-      const submitButton = screen.getByRole('button', { name: 'ログイン' })
+      const submitButton = screen.getByTestId('login-button')
       await user.click(submitButton)
       
       expect(submitButton).toBeDisabled()
@@ -154,7 +154,7 @@ describe('AuthForm Component', () => {
       
       await user.type(emailInput, 'test@example.com')
       await user.type(passwordInput, 'ValidPassword123!')
-      await user.click(screen.getByRole('button', { name: 'ログイン' }))
+      await user.click(screen.getByTestId('login-button'))
       
       await waitFor(() => {
         expect(emailInput.value).toBe('')
@@ -174,7 +174,7 @@ describe('AuthForm Component', () => {
       
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
       await user.type(screen.getByLabelText('パスワード'), 'ValidPassword123!')
-      await user.click(screen.getByRole('button', { name: 'ログイン' }))
+      await user.click(screen.getByTestId('login-button'))
       
       await waitFor(() => {
         expect(screen.getByText('Network error')).toBeInTheDocument()
@@ -195,7 +195,7 @@ describe('AuthForm Component', () => {
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
       await user.type(screen.getByLabelText('パスワード'), 'ValidPassword123!')
       await user.type(screen.getByLabelText('パスワード（確認）'), 'ValidPassword123!')
-      await user.click(screen.getByRole('button', { name: '登録' }))
+      await user.click(screen.getByTestId('register-button'))
       
       await waitFor(() => {
         expect(screen.getByText('Network error')).toBeInTheDocument()
@@ -212,7 +212,7 @@ describe('AuthForm Component', () => {
       
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
       await user.type(screen.getByLabelText('パスワード'), 'ValidPassword123!')
-      await user.click(screen.getByRole('button', { name: 'ログイン' }))
+      await user.click(screen.getByTestId('login-button'))
       
       await waitFor(() => {
         expect(screen.getByText('Service Unavailable')).toBeInTheDocument()
@@ -229,7 +229,7 @@ describe('AuthForm Component', () => {
       
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
       await user.type(screen.getByLabelText('パスワード'), 'ValidPassword123!')
-      await user.click(screen.getByRole('button', { name: 'ログイン' }))
+      await user.click(screen.getByTestId('login-button'))
       
       await waitFor(() => {
         expect(screen.getByText('Unexpected token in JSON')).toBeInTheDocument()
@@ -245,11 +245,11 @@ describe('AuthForm Component', () => {
       
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
       await user.type(screen.getByLabelText('パスワード'), 'ValidPassword123!')
-      await user.click(screen.getByRole('button', { name: 'ログイン' }))
+      await user.click(screen.getByTestId('login-button'))
       
       // ローディング状態を確認
       expect(screen.getByText('処理中...')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: '処理中...' })).toBeDisabled()
+      expect(screen.getByTestId('auth-loading')).toBeDisabled()
     }, 15000) // タイムアウトテストのため15秒に延長
   })
 })

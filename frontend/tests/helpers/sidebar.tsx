@@ -1,7 +1,7 @@
 import React from 'react'
 import { render as rtlRender } from '@testing-library/react'
 import { vi } from 'vitest'
-import type { MemoData } from '../../app/hooks/useMemos'
+import type { MemoData } from '../../app/types/tools'
 
 /**
  * サイドバーコンポーネントのテスト用ヘルパー関数
@@ -34,12 +34,14 @@ export const createMockMemo = (overrides?: Partial<MemoData>): MemoData => {
     id: `memo_${Math.random().toString(36).substr(2, 9)}`,
     type: 'memo',
     title: 'Test Memo',
+    content: 'This is a test memo content',
     text: 'This is a test memo content',
     x: 100,
     y: 100,
     w: 240,
     h: 160,
     zIndex: 1,
+    sourceType: 'guest',
     tags: [],
     created: now.toISOString(),
     updated: now.toISOString(),
@@ -140,15 +142,15 @@ export const groupMemosByCategory = (memos: MemoData[]): Record<string, MemoData
   memos.forEach(memo => {
     const category = memo.category || 'none'
     if (category in grouped) {
-      grouped[category].push(memo)
+      grouped[category]!.push(memo)
     } else {
-      grouped.none.push(memo)
+      grouped.none!.push(memo)
     }
   })
   
   // 空のカテゴリーを削除
   Object.keys(grouped).forEach(key => {
-    if (grouped[key].length === 0) {
+    if (grouped[key]!.length === 0) {
       delete grouped[key]
     }
   })

@@ -2,7 +2,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { saveEncrypted, loadEncrypted } from "../../utils/fileAccess";
+import { saveEncrypted, loadEncrypted } from "@/utils/fileAccess";
 
 export const useLocalFile = () => {
   const saveMemos   = useCallback((memoState: unknown) => saveEncrypted("memo", memoState), []);

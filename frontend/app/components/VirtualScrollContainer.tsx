@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { useVirtualScroll } from '../hooks/useVirtualScroll'
-import type { MemoData } from '../hooks/useMemos'
+import type { MemoData } from '../types/tools'
 
 export interface VirtualScrollContainerProps {
   items: MemoData[]
@@ -38,13 +38,13 @@ const DefaultItemRenderer: React.FC<{ item: MemoData; onSelect?: (item: MemoData
   </div>
 )
 
-export const VirtualScrollContainer: React.FC<VirtualScrollContainerProps> = ({
+const VirtualScrollContainerComponent: React.FC<VirtualScrollContainerProps> = ({
   items,
   itemHeight,
   height,
   onItemSelect,
   onScroll,
-  density: _density = 'standard',
+  // density = 'standard', // 将来の機能用に残しておく
   renderItem: CustomItemRenderer,
   className = ''
 }) => {
@@ -204,4 +204,8 @@ export const VirtualScrollContainer: React.FC<VirtualScrollContainerProps> = ({
       </div>
     </div>
   )
-}
+};
+
+VirtualScrollContainerComponent.displayName = 'VirtualScrollContainer';
+
+export const VirtualScrollContainer = React.memo(VirtualScrollContainerComponent);

@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
 import { SidebarItem } from '../SidebarItem'
-import type { MemoData } from '../../hooks/useMemos'
+import type { MemoData } from '../../types/tools'
 
 // 基本テストデータ
 const createBasicMemo = (): MemoData => ({
@@ -9,6 +9,8 @@ const createBasicMemo = (): MemoData => ({
   type: 'memo',
   title: 'Test Title',
   text: 'Test content',
+  content: 'Test content',
+  sourceType: 'guest',
   x: 0,
   y: 0,
   w: 200,

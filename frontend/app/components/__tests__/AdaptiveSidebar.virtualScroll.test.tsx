@@ -1,13 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { AdaptiveSidebar } from '../AdaptiveSidebar'
-import type { MemoData } from '../../hooks/useMemos'
+import type { MemoData } from '../../types/tools'
 
 // テストデータファクトリー（大量データ用）
 const createMockMemo = (index: number): MemoData => ({
   id: `memo_${index}`,
-  type: 'memo',
+  type: 'memo' as const,
   title: `Memo ${index}`,
+  content: `Content for memo ${index}`,
   text: `Content for memo ${index}`,
   x: 100,
   y: 100,
@@ -18,12 +19,13 @@ const createMockMemo = (index: number): MemoData => ({
   created: new Date(Date.now() - index * 1000 * 60).toISOString(),
   updated: new Date(Date.now() - index * 1000 * 30).toISOString(),
   importance: ['low', 'medium', 'high'][index % 3] as 'low' | 'medium' | 'high',
-  category: ['Work', 'Personal', 'Project'][index % 3]
+  category: ['Work', 'Personal', 'Project'][index % 3],
+  sourceType: 'authenticated'
 })
 
 // 大量テストデータ生成
 const generateLargeMemoDataset = (count: number): MemoData[] => 
-  Array.from({ length: count }, (_, i) => createMockMemo(i))
+  Array.from<undefined, MemoData>({ length: count }, (_, i) => createMockMemo(i))
 
 describe('AdaptiveSidebar Virtual Scroll Integration', () => {
   const mockOnItemSelect = vi.fn()
@@ -141,7 +143,8 @@ describe('AdaptiveSidebar Virtual Scroll Integration', () => {
       await waitFor(() => {
         // 仮想スクロールコンテナが詳細密度（80px）で設定される
         const virtualScrollContainer = screen.getByRole('list', { name: '仮想スクロールリスト' })
-        const innerContainer = virtualScrollContainer.querySelector('div')!
+        const innerContainer = virtualScrollContainer.querySelector('div');
+        expect(innerContainer).toBeTruthy();
         
         // 総高さが 300 * 80 = 24000px になる
         expect(innerContainer).toHaveStyle({ height: '24000px' })
@@ -163,7 +166,8 @@ describe('AdaptiveSidebar Virtual Scroll Integration', () => {
 
       // デフォルトは標準表示（48px）
       const virtualScrollContainer = screen.getByRole('list', { name: '仮想スクロールリスト' })
-      const innerContainer = virtualScrollContainer.querySelector('div')!
+      const innerContainer = virtualScrollContainer.querySelector('div');
+      expect(innerContainer).toBeTruthy();
       
       // 総高さが 300 * 48 = 14400px になる
       expect(innerContainer).toHaveStyle({ height: '14400px' })
@@ -189,7 +193,8 @@ describe('AdaptiveSidebar Virtual Scroll Integration', () => {
       await waitFor(() => {
         // 仮想スクロールコンテナが密集密度（32px）で設定される
         const virtualScrollContainer = screen.getByRole('list', { name: '仮想スクロールリスト' })
-        const innerContainer = virtualScrollContainer.querySelector('div')!
+        const innerContainer = virtualScrollContainer.querySelector('div');
+        expect(innerContainer).toBeTruthy();
         
         // 総高さが 300 * 32 = 9600px になる
         expect(innerContainer).toHaveStyle({ height: '9600px' })
@@ -391,7 +396,8 @@ describe('AdaptiveSidebar Virtual Scroll Integration', () => {
       expect(virtualScrollContainer).toBeInTheDocument()
       
       // 総高さが全アイテム数に基づいて設定される
-      const innerContainer = virtualScrollContainer.querySelector('div')!
+      const innerContainer = virtualScrollContainer.querySelector('div');
+      expect(innerContainer).toBeTruthy();
       expect(innerContainer).toHaveStyle({ height: '14400px' }) // 300 * 48px
       
       // 異なるカテゴリのアイテムが表示される
@@ -400,7 +406,8 @@ describe('AdaptiveSidebar Virtual Scroll Integration', () => {
       
       // 各アイテムが同じ高さ（48px）で表示される
       listItems.forEach(item => {
-        const itemWrapper = item.parentElement!
+        const itemWrapper = item.parentElement;
+        expect(itemWrapper).toBeTruthy();
         expect(itemWrapper).toHaveStyle({ height: '48px' })
       })
     })

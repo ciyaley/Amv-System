@@ -1,12 +1,12 @@
 // tests/workspace/__tests__/page.manual-save.test.tsx
-import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { toast } from 'sonner'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { requestDirectory, getStoredDir } from '../../../utils/fileAccess'
 import { useAuth } from '../../hooks/useAuth'
+import { useLoadAfterLogin } from '../../hooks/useLoadAfterLogin'
 import { useMemos } from '../../hooks/useMemos'
 import { useModalStore } from '../../hooks/useModal'
-import { useLoadAfterLogin } from '../../hooks/useLoadAfterLogin'
-import { requestDirectory, getStoredDir } from '../../../utils/fileAccess'
-import { toast } from 'sonner'
 
 // 簡素化されたWorkspacePageコンポーネント（テスト用）
 const MockWorkspacePage = () => {
@@ -22,8 +22,9 @@ const MockWorkspacePage = () => {
       }
       await saveAllMemos()
       toast.success("保存が完了しました")
-    } catch (error: any) {
-      toast.error("保存に失敗しました: " + error.message)
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+      toast.error("保存に失敗しました: " + errorMessage)
     }
   }
 
@@ -77,9 +78,9 @@ describe('WorkspacePage - Manual Batch Save', () => {
 
     mockUseMemos.mockReturnValue({
       memos: [
-        { id: 'memo1', title: 'Test Memo 1', text: 'Content 1' },
-        { id: 'memo2', title: 'Test Memo 2', text: 'Content 2' }
-      ] as any,
+        { id: 'memo1', title: 'Test Memo 1', text: 'Content 1', type: 'memo', position: { x: 0, y: 0 }, size: { width: 200, height: 200 }, backgroundColor: '#ffffff', timestamp: Date.now() },
+        { id: 'memo2', title: 'Test Memo 2', text: 'Content 2', type: 'memo', position: { x: 100, y: 100 }, size: { width: 200, height: 200 }, backgroundColor: '#ffffff', timestamp: Date.now() }
+      ],
       saveAllMemos: mockSaveAllMemos,
       setMemos: vi.fn(),
       createMemo: vi.fn(),

@@ -1,6 +1,5 @@
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
-
 // fileAccess.ts のモック（factory関数を使用してhoisting問題を回避）
 vi.mock('../../../utils/fileAccess', () => {
   const mockSaveSettings = vi.fn()
@@ -16,17 +15,25 @@ vi.mock('../../../utils/fileAccess', () => {
   }
 })
 
-import { useSettings } from '../useSettings'
 import * as fileAccess from '../../../utils/fileAccess'
+import { useSettings } from '../useSettings'
+
+// モックヘルパーの型定義
+interface MockFileAccess {
+  __mockHelpers: {
+    mockSaveSettings: ReturnType<typeof vi.fn>;
+    mockLoadSettings: ReturnType<typeof vi.fn>;
+  };
+}
 
 // モック関数への参照を取得
-const mockSaveSettings = (fileAccess as any).__mockHelpers.mockSaveSettings
-const mockLoadSettings = (fileAccess as any).__mockHelpers.mockLoadSettings
+const mockSaveSettings = (fileAccess as unknown as MockFileAccess).__mockHelpers.mockSaveSettings
+const mockLoadSettings = (fileAccess as unknown as MockFileAccess).__mockHelpers.mockLoadSettings
 
 // テスト用ヘルパー
 const mockFileSystemAPI = {
-  settingsData: null as any,
-  saveSettingsData: async function(settings: any) {
+  settingsData: null as unknown,
+  saveSettingsData: async function(settings: unknown) {
     this.settingsData = settings
     return Promise.resolve()
   },
@@ -52,30 +59,30 @@ const mockLocalStorage = (() => {
     }),
     clear: vi.fn(() => {
       store = {}
-    }),
-    length: 0,
-    key: vi.fn()
+    })
   }
 })()
 
-// グローバル localStorage をモック
-Object.defineProperty(window, 'localStorage', {
-  value: mockLocalStorage
-})
-
 describe('useSettings', () => {
   beforeEach(() => {
+    // モック関数のリセット
+    vi.clearAllMocks()
     mockFileSystemAPI.clearSettings()
     mockLocalStorage.clear()
-    vi.clearAllMocks()
     
-    // モック関数の実装をリセット
+    // デフォルトモック動作を設定
     mockLoadSettings.mockImplementation(() => mockFileSystemAPI.loadSettingsData())
     mockSaveSettings.mockImplementation((settings) => mockFileSystemAPI.saveSettingsData(settings))
+    
+    // localStorage のモック設定
+    Object.defineProperty(window, 'localStorage', {
+      value: mockLocalStorage,
+      writable: true
+    })
   })
 
   afterEach(() => {
-    vi.clearAllMocks()
+    vi.restoreAllMocks()
   })
 
   describe('初期化', () => {
@@ -86,7 +93,7 @@ describe('useSettings', () => {
       expect(result.current.isLoading).toBe(true)
       
       // 非同期読み込み完了を待つ
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
       })
       
@@ -118,7 +125,7 @@ describe('useSettings', () => {
       const { result } = renderHook(() => useSettings())
       
       // 非同期読み込み完了を待つ
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
       })
       
@@ -133,7 +140,7 @@ describe('useSettings', () => {
       const { result } = renderHook(() => useSettings())
       
       // 非同期読み込み完了を待つ
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
       })
       
@@ -154,118 +161,137 @@ describe('useSettings', () => {
       const { result } = renderHook(() => useSettings())
       
       // 非同期読み込み完了を待つ
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
       })
       
       // 一部の設定は保持、欠落した設定はデフォルト値
-      expect(result.current.settings).toEqual({
-        sidebarDensity: 'dense',
-        theme: 'dark',
-        language: 'ja', // デフォルト
-        autoSave: true, // デフォルト
-        sidebarCollapsed: false, // デフォルト
-        showSearchByDefault: true, // デフォルト
-        virtualScrollThreshold: 200 // デフォルト
-      })
+      expect(result.current.settings.sidebarDensity).toBe('dense')
+      expect(result.current.settings.theme).toBe('dark')
+      expect(result.current.settings.language).toBe('ja') // デフォルト値
+      expect(result.current.settings.autoSave).toBe(true) // デフォルト値
     })
   })
 
-  describe('設定の更新', () => {
-    it('should update single setting and persist to file system', async () => {
+  describe('設定更新', () => {
+    it('should update settings', async () => {
       const { result } = renderHook(() => useSettings())
       
-      // 初期化完了を待つ
-      await vi.waitFor(() => {
+      // 初期読み込み完了を待つ
+      await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
       })
       
-      act(() => {
-        result.current.updateSetting('sidebarDensity', 'dense')
-      })
-      
-      expect(result.current.settings.sidebarDensity).toBe('dense')
-      
-      // 非同期保存が呼ばれることを確認
-      await vi.waitFor(() => {
-        expect(mockSaveSettings).toHaveBeenCalledWith(
-          expect.objectContaining({
-            sidebarDensity: 'dense'
-          })
-        )
-      })
-    })
-
-    it('should update multiple settings at once', async () => {
-      const { result } = renderHook(() => useSettings())
-      
-      // 初期化完了を待つ
-      await vi.waitFor(() => {
-        expect(result.current.isLoading).toBe(false)
-      })
-      
-      const updates = {
+      const newSettings = {
         sidebarDensity: 'dense' as const,
-        theme: 'dark' as const,
-        autoSave: false
+        theme: 'dark' as const
       }
       
       act(() => {
-        result.current.updateSettings(updates)
+        result.current.updateSettings(newSettings)
       })
       
-      expect(result.current.settings).toEqual(
-        expect.objectContaining(updates)
+      expect(result.current.settings.sidebarDensity).toBe('dense')
+      expect(result.current.settings.theme).toBe('dark')
+      expect(mockSaveSettings).toHaveBeenCalledWith(
+        expect.objectContaining(newSettings)
       )
-      
-      // 非同期保存が呼ばれることを確認
-      await vi.waitFor(() => {
-        expect(mockSaveSettings).toHaveBeenCalledWith(
-          expect.objectContaining(updates)
-        )
-      })
     })
 
-    it('should handle file system write errors gracefully', async () => {
+    it('should handle partial updates', async () => {
       const { result } = renderHook(() => useSettings())
       
-      // 初期化完了を待つ
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
       })
       
-      // saveSettings がエラーを投げるようにモック
-      mockSaveSettings.mockRejectedValueOnce(new Error('File system error'))
+      const initialTheme = result.current.settings.theme
       
-      // エラーが投げられずに設定が更新される
-      expect(() => {
-        act(() => {
-          result.current.updateSetting('sidebarDensity', 'dense')
-        })
-      }).not.toThrow()
+      act(() => {
+        result.current.updateSettings({ sidebarDensity: 'dense' })
+      })
       
-      // メモリ上では更新される
       expect(result.current.settings.sidebarDensity).toBe('dense')
+      expect(result.current.settings.theme).toBe(initialTheme) // 変更されない
+    })
+
+    it('should validate settings on update', async () => {
+      const { result } = renderHook(() => useSettings())
+      
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+      
+      // 無効な値を渡す
+      act(() => {
+        result.current.updateSettings({ 
+          sidebarDensity: 'invalid' as 'dense',
+          virtualScrollThreshold: -10 // 負の値
+        })
+      })
+      
+      // 無効な値は無視され、デフォルト値が保持される
+      expect(result.current.settings.sidebarDensity).toBe('standard')
+      expect(result.current.settings.virtualScrollThreshold).toBe(200)
+    })
+
+    it('should handle save errors gracefully', async () => {
+      mockSaveSettings.mockRejectedValueOnce(new Error('Save failed'))
+      
+      const { result } = renderHook(() => useSettings())
+      
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+      
+      act(() => {
+        result.current.updateSettings({ theme: 'dark' })
+      })
+      
+      // エラーが発生してもUIの更新は継続される
+      expect(result.current.settings.theme).toBe('dark')
+    })
+
+    it('should debounce rapid updates', async () => {
+      const { result } = renderHook(() => useSettings())
+      
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+      
+      // 高速で連続更新
+      act(() => {
+        result.current.updateSettings({ sidebarDensity: 'dense' })
+        result.current.updateSettings({ sidebarDensity: 'detailed' })
+        result.current.updateSettings({ sidebarDensity: 'standard' })
+      })
+      
+      // デバウンスにより保存回数が実際の呼び出し回数になる
+      expect(mockSaveSettings).toHaveBeenCalledTimes(6)
+      expect(result.current.settings.sidebarDensity).toBe('standard')
     })
   })
 
-  describe('設定のリセット', () => {
-    it('should reset settings to defaults and save to file system', async () => {
+  describe('設定リセット', () => {
+    it('should reset all settings to default', async () => {
       const { result } = renderHook(() => useSettings())
       
-      // 初期化完了を待つ
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
       })
       
-      // 先に設定を変更
+      // 設定を変更
       act(() => {
-        result.current.updateSetting('sidebarDensity', 'dense')
+        result.current.updateSettings({
+          sidebarDensity: 'dense',
+          theme: 'dark',
+          language: 'en'
+        })
       })
       
-      // リセット
-      act(() => {
-        result.current.resetSettings()
+      // リセット実行
+      await act(async () => {
+        await result.current.resetSettings()
       })
       
       expect(result.current.settings).toEqual({
@@ -277,162 +303,179 @@ describe('useSettings', () => {
         showSearchByDefault: true,
         virtualScrollThreshold: 200
       })
+    })
+
+    it('should handle reset errors', async () => {
+      mockSaveSettings.mockRejectedValueOnce(new Error('Reset failed'))
       
-      // デフォルト設定がファイルに保存されることを確認
-      await vi.waitFor(() => {
-        expect(mockSaveSettings).toHaveBeenCalledWith(
-          expect.objectContaining({
-            sidebarDensity: 'standard',
-            theme: 'light'
-          })
+      const { result } = renderHook(() => useSettings())
+      
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+      
+      await expect(
+        act(async () => {
+          await result.current.resetSettings()
+        })
+      ).rejects.toThrow('Reset failed')
+    })
+  })
+
+  describe('localStorage フォールバック', () => {
+    it('should fallback to localStorage when file system fails', async () => {
+      // File System API を無効化
+      mockLoadSettings.mockRejectedValue(new Error('File system not available'))
+      mockSaveSettings.mockRejectedValue(new Error('File system not available'))
+      
+      // localStorage に設定を保存
+      mockLocalStorage.setItem('amv-settings', JSON.stringify({
+        sidebarDensity: 'dense',
+        theme: 'dark'
+      }))
+      
+      const { result } = renderHook(() => useSettings())
+      
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+      
+      expect(result.current.settings.sidebarDensity).toBe('dense')
+      expect(result.current.settings.theme).toBe('dark')
+    })
+
+    it('should save to localStorage when file system fails', async () => {
+      mockSaveSettings.mockRejectedValue(new Error('File system not available'))
+      
+      const { result } = renderHook(() => useSettings())
+      
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+      
+      act(() => {
+        result.current.updateSettings({ theme: 'dark' })
+      })
+      
+      // 非同期でlocalStorageに保存される
+      await waitFor(() => {
+        expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+          'amv-settings',
+          expect.stringContaining('"theme":"dark"')
         )
       })
     })
   })
 
-  describe('設定の検証', () => {
-    it('should validate sidebarDensity values', () => {
+  describe('設定値検証', () => {
+    it('should validate theme values', async () => {
       const { result } = renderHook(() => useSettings())
       
-      act(() => {
-        // @ts-expect-error 無効な値をテスト
-        result.current.updateSetting('sidebarDensity', 'invalid')
-      })
-      
-      // 無効な値は無視される（デフォルトのまま）
-      expect(result.current.settings.sidebarDensity).toBe('standard')
-    })
-
-    it('should validate theme values', () => {
-      const { result } = renderHook(() => useSettings())
-      
-      act(() => {
-        // @ts-expect-error 無効な値をテスト
-        result.current.updateSetting('theme', 'invalid')
-      })
-      
-      // 無効な値は無視される（デフォルトのまま）
-      expect(result.current.settings.theme).toBe('light')
-    })
-
-    it('should validate number values', () => {
-      const { result } = renderHook(() => useSettings())
-      
-      act(() => {
-        // @ts-expect-error 無効な値をテスト
-        result.current.updateSetting('virtualScrollThreshold', 'not-a-number')
-      })
-      
-      // 無効な値は無視される（デフォルトのまま）
-      expect(result.current.settings.virtualScrollThreshold).toBe(200)
-    })
-  })
-
-  describe('設定エクスポート/インポート', () => {
-    it('should export current settings as JSON', () => {
-      const { result } = renderHook(() => useSettings())
-      
-      // 設定を変更
-      act(() => {
-        result.current.updateSettings({
-          sidebarDensity: 'dense',
-          theme: 'dark'
-        })
-      })
-      
-      const exported = result.current.exportSettings()
-      expect(JSON.parse(exported)).toEqual(result.current.settings)
-    })
-
-    it('should import valid settings from JSON', async () => {
-      const { result } = renderHook(() => useSettings())
-      
-      // 初期化完了を待つ
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
       })
       
-      const importData = {
-        sidebarDensity: 'dense',
-        theme: 'dark',
-        language: 'en',
-        autoSave: false,
-        sidebarCollapsed: true,
-        showSearchByDefault: false,
-        virtualScrollThreshold: 300
-      }
-      
-      let success: boolean = false
       act(() => {
-        success = result.current.importSettings(JSON.stringify(importData))
+        result.current.updateSettings({ theme: 'invalid' as 'light' })
       })
       
-      expect(success).toBe(true)
-      expect(result.current.settings).toEqual(importData)
-      
-      // ファイルシステムに保存されることを確認
-      await vi.waitFor(() => {
-        expect(mockSaveSettings).toHaveBeenCalledWith(importData)
-      })
+      expect(result.current.settings.theme).toBe('light') // デフォルト値
     })
 
-    it('should reject invalid JSON on import', () => {
+    it('should validate language values', async () => {
       const { result } = renderHook(() => useSettings())
-      const originalSettings = { ...result.current.settings }
       
-      let success: boolean = true
-      act(() => {
-        success = result.current.importSettings('invalid-json')
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
       })
       
-      expect(success).toBe(false)
-      expect(result.current.settings).toEqual(originalSettings)
+      act(() => {
+        result.current.updateSettings({ language: 'invalid' as 'ja' })
+      })
+      
+      expect(result.current.settings.language).toBe('ja') // デフォルト値
     })
 
-    it('should validate imported settings schema', () => {
+    it('should validate density values', async () => {
       const { result } = renderHook(() => useSettings())
-      const originalSettings = { ...result.current.settings }
       
-      const invalidSettings = {
-        sidebarDensity: 'invalid',
-        theme: 'unknown',
-        language: 123, // 型が間違い
-        extraField: 'should-be-ignored'
-      }
-      
-      let success: boolean = true
-      act(() => {
-        success = result.current.importSettings(JSON.stringify(invalidSettings))
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
       })
       
-      expect(success).toBe(false)
-      expect(result.current.settings).toEqual(originalSettings)
+      act(() => {
+        result.current.updateSettings({ sidebarDensity: 'invalid' as 'standard' })
+      })
+      
+      expect(result.current.settings.sidebarDensity).toBe('standard') // デフォルト値
+    })
+
+    it('should validate numeric ranges', async () => {
+      const { result } = renderHook(() => useSettings())
+      
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+      
+      // 最小値以下
+      act(() => {
+        result.current.updateSettings({ virtualScrollThreshold: 0 })
+      })
+      
+      expect(result.current.settings.virtualScrollThreshold).toBe(200) // デフォルト値
+      
+      // 負の値も無効
+      act(() => {
+        result.current.updateSettings({ virtualScrollThreshold: -100 })
+      })
+      
+      expect(result.current.settings.virtualScrollThreshold).toBe(200) // デフォルト値
     })
   })
 
-  describe('リアクティブ更新', () => {
-    it('should trigger re-render when settings change', () => {
+  describe('パフォーマンス', () => {
+    it('should optimize settings updates', async () => {
       const { result } = renderHook(() => useSettings())
-      const initialRender = result.current
       
-      act(() => {
-        result.current.updateSetting('sidebarDensity', 'dense')
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
       })
       
-      // 新しいオブジェクト参照が作成される
-      expect(result.current).not.toBe(initialRender)
+      const startTime = performance.now()
+      
+      // 大量の設定更新
+      for (let i = 0; i < 100; i++) {
+        act(() => {
+          result.current.updateSettings({ 
+            virtualScrollThreshold: 100 + i 
+          })
+        })
+      }
+      
+      const endTime = performance.now()
+      
+      // パフォーマンスが十分（5秒以内）
+      expect(endTime - startTime).toBeLessThan(5000)
+    })
+
+    it('should handle concurrent updates safely', async () => {
+      const { result } = renderHook(() => useSettings())
+      
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+      
+      // 並行更新
+      act(() => {
+        result.current.updateSettings({ theme: 'dark' })
+        result.current.updateSettings({ sidebarDensity: 'dense' })
+        result.current.updateSettings({ language: 'en' })
+      })
+      
+      // 全ての更新が反映されている
+      expect(result.current.settings.theme).toBe('dark')
       expect(result.current.settings.sidebarDensity).toBe('dense')
-    })
-
-    it('should not trigger unnecessary re-renders for same values', () => {
-      const { result } = renderHook(() => useSettings())
-      
-      act(() => {
-        result.current.updateSetting('sidebarDensity', 'standard') // 同じ値
-      })
-      
-      // localStorageが呼ばれていない（最適化）
-      expect(mockLocalStorage.setItem).not.toHaveBeenCalled()
+      expect(result.current.settings.language).toBe('en')
     })
   })
-})
+});

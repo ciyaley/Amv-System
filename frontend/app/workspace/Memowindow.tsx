@@ -1,15 +1,16 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
-import { useMemos, MemoData } from "../hooks/useMemos";
-import { useCanvasStore } from "../hooks/useCanvas";
+import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
 import { toast } from "sonner";
+import { useCanvasStore } from "../hooks/useCanvas";
+import { useMemos } from "../hooks/useMemos";
+import { type MemoData } from "../types/tools";
 
 interface Props { 
   memo: MemoData 
 }
 
-export const MemoWindow = ({ memo }: Props) => {
+const MemoWindowComponent = ({ memo }: Props) => {
   const { updateMemo, updateMemoPosition, updateMemoSize, deleteMemo, bringToFront, sendToBack, moveUp, moveDown, toggleMemoVisibility } = useMemos();
   const { zoom } = useCanvasStore();
   const [editing, setEditing] = useState(false);
@@ -21,15 +22,58 @@ export const MemoWindow = ({ memo }: Props) => {
   const resizeRef = useRef<HTMLDivElement>(null);
   const deleteTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 🔧 修正: コンポーネントアンマウント時のタイマークリーンアップ
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current) {
+        clearTimeout(deleteTimerRef.current);
+        deleteTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  // メモ化されたスタイル計算
+  const appearance = useMemo(() => ({
+    backgroundColor: memo.appearance?.backgroundColor || '#ffeaa7',
+    borderColor: memo.appearance?.borderColor || '#fdcb6e',
+    cornerRadius: memo.appearance?.cornerRadius || 8,
+    shadowEnabled: memo.appearance?.shadowEnabled !== false
+  }), [memo.appearance]);
+
+
   // メモの更新時にローカル状態を同期
   useEffect(() => {
     setLocalTitle(memo.title);
     setLocalText(memo.text);
   }, [memo.title, memo.text]);
 
-  /** ── ドラッグ ────────────────── */
-  const onMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.memo-header-controls')) return;
+  // 新しく作成されたメモは自動的に編集モードに
+  useEffect(() => {
+    if (memo.text === "" && memo.title === "新しいメモ") {
+      setEditing(true);
+    }
+  }, [memo.text, memo.title]);
+
+  // 🔧 修正: グローバルイベントリスナーのクリーンアップ管理
+  const activeListenersRef = useRef<(() => void)[]>([]);
+  
+  useEffect(() => {
+    return () => {
+      // コンポーネントアンマウント時に全てのイベントリスナーをクリーンアップ
+      activeListenersRef.current.forEach(cleanup => cleanup());
+      activeListenersRef.current = [];
+    };
+  }, []);
+
+  /** ── ドラッグ（最適化版） ────────────────── */
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    // ヘッダーコントロール、レイヤー操作、リサイズハンドルからのドラッグを無効化
+    if (target.closest('.memo-header-controls') || 
+        target.closest('button') || 
+        target.closest('.cursor-se-resize')) {
+      return;
+    }
     
     e.stopPropagation();
     const startX = e.clientX;
@@ -46,14 +90,19 @@ export const MemoWindow = ({ memo }: Props) => {
     const up = () => {
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", up);
+      // クリーンアップリストから削除
+      activeListenersRef.current = activeListenersRef.current.filter(cleanup => cleanup !== up);
     };
     
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
-  };
+    
+    // アクティブなリスナーのクリーンアップ関数を記録
+    activeListenersRef.current.push(up);
+  }, [memo.id, memo.x, memo.y, zoom, updateMemoPosition]);
 
-  /** ── リサイズ ────────────────── */
-  const onResizeMouseDown = (e: React.MouseEvent) => {
+  /** ── リサイズ（最適化版） ────────────────── */
+  const onResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     const startX = e.clientX;
     const startY = e.clientY;
@@ -69,21 +118,26 @@ export const MemoWindow = ({ memo }: Props) => {
     const up = () => {
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", up);
+      // クリーンアップリストから削除
+      activeListenersRef.current = activeListenersRef.current.filter(cleanup => cleanup !== up);
     };
     
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
-  };
+    
+    // アクティブなリスナーのクリーンアップ関数を記録
+    activeListenersRef.current.push(up);
+  }, [memo.id, memo.w, memo.h, zoom, updateMemoSize]);
 
-  /** ── 編集完了時の自動保存 ────────────────── */
-  const handleSave = () => {
+  /** ── 編集完了時の自動保存（最適化版） ────────────────── */
+  const handleSave = useCallback(() => {
     updateMemo(memo.id, { 
       title: localTitle || '無題のメモ',
       text: localText 
     });
     setEditing(false);
     // 自動保存のため、トーストは表示しない
-  };
+  }, [memo.id, localTitle, localText, updateMemo]);
 
   /** ── タグの追加 ────────────────── */
   const handleAddTag = () => {
@@ -103,27 +157,32 @@ export const MemoWindow = ({ memo }: Props) => {
   };
 
   /** ── メモの削除（長押し） ────────────────── */
-  const handleDeleteStart = () => {
-    deleteTimerRef.current = setTimeout(() => {
-      if (confirm('このメモを削除しますか？')) {
-        deleteMemo(memo.id);
-        toast.success('メモを削除しました');
-      }
-    }, 1000); // 1秒長押し
-  };
-
-  const handleDeleteEnd = () => {
+  const handleDeleteStart = useCallback(() => {
+    // 既存のタイマーがあればクリア
     if (deleteTimerRef.current) {
       clearTimeout(deleteTimerRef.current);
     }
-  };
+    
+    deleteTimerRef.current = setTimeout(async () => {
+      if (confirm('このメモを削除しますか？')) {
+        try {
+          await deleteMemo(memo.id);
+          toast.success('メモを削除しました');
+        } catch {
+          toast.error('メモの削除に失敗しました');
+        }
+      }
+      deleteTimerRef.current = null;
+    }, 1000); // 1秒長押し
+  }, [memo.id, deleteMemo]);
 
-  const appearance = memo.appearance || {
-    backgroundColor: '#ffeaa7',
-    borderColor: '#fdcb6e',
-    cornerRadius: 8,
-    shadowEnabled: true
-  };
+  const handleDeleteEnd = useCallback(() => {
+    if (deleteTimerRef.current) {
+      clearTimeout(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+    }
+  }, []);
+
 
   return (
     <article
@@ -141,6 +200,7 @@ export const MemoWindow = ({ memo }: Props) => {
         borderRadius: appearance.cornerRadius,
         boxShadow: appearance.shadowEnabled ? '0 4px 6px rgba(0, 0, 0, 0.1)' : 'none'
       }}
+      data-testid={`memo-window-${memo.id}`}
     >
       {/* ── ヘッダー ────────────────── */}
       <div className="memo-header flex items-center justify-between p-2 bg-white bg-opacity-50 border-b">
@@ -151,15 +211,17 @@ export const MemoWindow = ({ memo }: Props) => {
             value={localTitle}
             onChange={(e) => setLocalTitle(e.target.value)}
             placeholder="タイトル"
+            data-testid="memo-title-input"
           />
         ) : (
-          <h3 className="flex-1 px-2 text-sm font-medium truncate">{memo.title}</h3>
+          <h3 className="flex-1 px-2 text-sm font-medium truncate" data-testid="memo-title">{memo.title}</h3>
         )}
         
         <div className="memo-header-controls flex items-center space-x-1">
           {/* タグ表示トグル */}
           <button
             onClick={() => setShowTags(!showTags)}
+            onMouseDown={(e) => e.stopPropagation()}
             className="p-1 text-xs hover:bg-gray-200 rounded"
             title="タグ"
           >
@@ -169,15 +231,20 @@ export const MemoWindow = ({ memo }: Props) => {
           {/* 画面から隠すボタン */}
           <button
             onClick={() => toggleMemoVisibility(memo.id)}
+            onMouseDown={(e) => e.stopPropagation()}
             className="p-1 text-xs hover:bg-yellow-200 rounded"
             title="画面から隠す"
+            data-testid="memo-hide-button"
           >
             👁
           </button>
           
           {/* 削除ボタン（長押し） */}
           <button
-            onMouseDown={handleDeleteStart}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              handleDeleteStart();
+            }}
             onMouseUp={handleDeleteEnd}
             onMouseLeave={handleDeleteEnd}
             className="p-1 text-xs hover:bg-red-200 rounded"
@@ -200,6 +267,7 @@ export const MemoWindow = ({ memo }: Props) => {
                 {tag}
                 <button
                   onClick={() => handleRemoveTag(tag)}
+                  onMouseDown={(e) => e.stopPropagation()}
                   className="ml-1 text-red-500 hover:text-red-700"
                 >
                   ×
@@ -218,6 +286,7 @@ export const MemoWindow = ({ memo }: Props) => {
             />
             <button
               onClick={handleAddTag}
+              onMouseDown={(e) => e.stopPropagation()}
               className="px-2 py-1 text-xs bg-white bg-opacity-70 rounded-r hover:bg-opacity-100"
             >
               追加
@@ -229,28 +298,32 @@ export const MemoWindow = ({ memo }: Props) => {
       {/* ── レイヤー操作 ────────────────── */}
       <div className="flex justify-center space-x-1 p-1 bg-white bg-opacity-30">
         <button 
-          onClick={() => moveUp(memo.id)} 
+          onClick={() => moveUp(memo.id)}
+          onMouseDown={(e) => e.stopPropagation()}
           className="px-2 py-0.5 text-xs hover:bg-gray-200 rounded"
           title="一段上げ"
         >
           ▲
         </button>
         <button 
-          onClick={() => moveDown(memo.id)} 
+          onClick={() => moveDown(memo.id)}
+          onMouseDown={(e) => e.stopPropagation()}
           className="px-2 py-0.5 text-xs hover:bg-gray-200 rounded"
           title="一段下げ"
         >
           ▼
         </button>
         <button 
-          onClick={() => bringToFront(memo.id)} 
+          onClick={() => bringToFront(memo.id)}
+          onMouseDown={(e) => e.stopPropagation()}
           className="px-2 py-0.5 text-xs hover:bg-gray-200 rounded"
           title="最前面へ"
         >
           ⏶
         </button>
         <button 
-          onClick={() => sendToBack(memo.id)} 
+          onClick={() => sendToBack(memo.id)}
+          onMouseDown={(e) => e.stopPropagation()}
           className="px-2 py-0.5 text-xs hover:bg-gray-200 rounded"
           title="最背面へ"
         >
@@ -271,6 +344,7 @@ export const MemoWindow = ({ memo }: Props) => {
               value={localText}
               onChange={(e) => setLocalText(e.target.value)}
               placeholder="メモの内容"
+              data-testid={`memo-textarea-${memo.id}`}
             />
             <div className="flex justify-end mt-2 space-x-2">
               <button
@@ -279,12 +353,14 @@ export const MemoWindow = ({ memo }: Props) => {
                   setLocalText(memo.text);
                   setEditing(false);
                 }}
+                onMouseDown={(e) => e.stopPropagation()}
                 className="px-3 py-1 text-sm bg-gray-300 rounded hover:bg-gray-400"
               >
                 キャンセル
               </button>
               <button
                 onClick={handleSave}
+                onMouseDown={(e) => e.stopPropagation()}
                 className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
               >
                 完了
@@ -306,7 +382,29 @@ export const MemoWindow = ({ memo }: Props) => {
         style={{ 
           background: `linear-gradient(135deg, transparent 50%, ${appearance.borderColor} 50%)`
         }}
+        data-testid="memo-resize-handle"
       />
     </article>
   );
 };
+
+// React.memoでパフォーマンス最適化
+export const MemoWindow = memo(MemoWindowComponent, (prevProps, nextProps) => {
+  // メモのコンテンツが変更された場合のみ再レンダリング
+  const prevMemo = prevProps.memo;
+  const nextMemo = nextProps.memo;
+  
+  return (
+    prevMemo.id === nextMemo.id &&
+    prevMemo.title === nextMemo.title &&
+    prevMemo.text === nextMemo.text &&
+    prevMemo.x === nextMemo.x &&
+    prevMemo.y === nextMemo.y &&
+    prevMemo.w === nextMemo.w &&
+    prevMemo.h === nextMemo.h &&
+    prevMemo.zIndex === nextMemo.zIndex &&
+    prevMemo.visible === nextMemo.visible &&
+    JSON.stringify(prevMemo.appearance) === JSON.stringify(nextMemo.appearance) &&
+    JSON.stringify(prevMemo.tags) === JSON.stringify(nextMemo.tags)
+  );
+});

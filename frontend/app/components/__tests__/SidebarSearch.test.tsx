@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { SidebarSearch } from '../SidebarSearch'
 
 describe('SidebarSearch Component', () => {
@@ -21,7 +21,7 @@ describe('SidebarSearch Component', () => {
       
       const input = screen.getByPlaceholderText('検索...')
       expect(input).toBeInTheDocument()
-      expect(input).toHaveAttribute('type', 'text')
+      expect(input).toHaveAttribute('type', 'search')
     })
 
     it('should show search icon', () => {
@@ -38,8 +38,10 @@ describe('SidebarSearch Component', () => {
       const searchContainer = screen.getByRole('search')
       expect(searchContainer).toBeInTheDocument()
       
+      // type="search"の場合、role="searchbox"が暗黙的に設定される
       const input = screen.getByRole('searchbox')
       expect(input).toHaveAttribute('aria-label', 'アイテムを検索')
+      expect(input).toHaveAttribute('type', 'search')
     })
   })
 
@@ -177,8 +179,14 @@ describe('SidebarSearch Component', () => {
       const searchContainer = screen.getByRole('search')
       expect(searchContainer).toBeInTheDocument()
       
+      // アクセシビリティテスト: searchbox roleでアクセス可能であること
       const input = screen.getByRole('searchbox')
       expect(input).toHaveAttribute('aria-label', 'アイテムを検索')
+      expect(input).toHaveAttribute('type', 'search')
+      
+      // ラベルでもアクセス可能であること
+      const inputByLabel = screen.getByLabelText('アイテムを検索')
+      expect(inputByLabel).toBe(input)
     })
 
     it('should announce search updates', async () => {
@@ -192,6 +200,35 @@ describe('SidebarSearch Component', () => {
       
       // aria-live領域が存在することを確認
       expect(screen.getByRole('status')).toBeInTheDocument()
+    })
+
+    it('should provide keyboard navigation support', async () => {
+      const user = userEvent.setup({ delay: null })
+      render(<SidebarSearch onSearch={mockOnSearch} />)
+      
+      const input = screen.getByRole('searchbox')
+      
+      // Tab キーでフォーカス可能
+      await user.tab()
+      expect(input).toHaveFocus()
+      
+      // 入力後、Escape でクリア可能
+      await user.type(input, 'test query')
+      await user.keyboard('{Escape}')
+      expect(input).toHaveValue('')
+      expect(input).toHaveFocus() // フォーカスが維持される
+    })
+
+    it('should have semantic search landmark', () => {
+      render(<SidebarSearch onSearch={mockOnSearch} />)
+      
+      // search landmarkが正しく設定されている
+      const searchContainer = screen.getByRole('search')
+      expect(searchContainer).toBeInTheDocument()
+      
+      // 入力フィールドは検索機能として識別される
+      const input = screen.getByRole('searchbox')
+      expect(input).toBeInTheDocument()
     })
   })
 })

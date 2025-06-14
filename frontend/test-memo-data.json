@@ -1,0 +1,25 @@
+{
+  "id": "test-memo-browser-1",
+  "type": "memo",
+  "title": "ブラウザテスト用メモ",
+  "text": "これは実際のブラウザ環境でのメモ読み取り機能をテストするためのサンプルメモです。",
+  "content": "これは実際のブラウザ環境でのメモ読み取り機能をテストするためのサンプルメモです。",
+  "x": 200,
+  "y": 150,
+  "w": 350,
+  "h": 220,
+  "zIndex": 1,
+  "visible": true,
+  "sourceType": "guest",
+  "created": "2025-06-07T23:59:00.000Z",
+  "updated": "2025-06-07T23:59:00.000Z",
+  "createdAt": "2025-06-07T23:59:00.000Z",
+  "updatedAt": "2025-06-07T23:59:00.000Z",
+  "tags": ["テスト", "ブラウザ"],
+  "appearance": {
+    "backgroundColor": "#ffeaa7",
+    "borderColor": "#fdcb6e",
+    "cornerRadius": 8,
+    "shadowEnabled": true
+  }
+}

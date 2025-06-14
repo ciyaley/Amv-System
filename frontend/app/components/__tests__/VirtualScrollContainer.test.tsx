@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { VirtualScrollContainer } from '../VirtualScrollContainer'
-import type { MemoData } from '../../hooks/useMemos'
+import type { MemoData } from '../../types/tools'
 
 // テストデータファクトリー
 const createMockMemo = (index: number): MemoData => ({
@@ -9,6 +9,8 @@ const createMockMemo = (index: number): MemoData => ({
   type: 'memo',
   title: `Test Memo ${index}`,
   text: `This is memo content ${index}`,
+  content: `This is memo content ${index}`,
+  sourceType: 'guest',
   x: 100,
   y: 100,
   w: 240,
@@ -156,10 +158,12 @@ describe('VirtualScrollContainer Component', () => {
         />
       )
 
-      const scrollContainer = container.querySelector('[role="list"]')!
+      const scrollContainer = container.querySelector('[role="list"]')
+      if (!scrollContainer) throw new Error('Scroll container not found')
 
       // 総高さが正しく設定されている
-      const innerContainer = scrollContainer.querySelector('div')!
+      const innerContainer = scrollContainer.querySelector('div')
+      if (!innerContainer) throw new Error('Inner container not found')
       expect(innerContainer).toHaveStyle({ height: '48000px' }) // 1000 * 48
     })
   })
@@ -179,7 +183,8 @@ describe('VirtualScrollContainer Component', () => {
       )
 
       const container = screen.getByRole('list')
-      const innerContainer = container.querySelector('div')!
+      const innerContainer = container.querySelector('div')
+      if (!innerContainer) throw new Error('Inner container not found')
       expect(innerContainer).toHaveStyle({ height: '8000px' }) // 100 * 80
     })
 
@@ -197,7 +202,8 @@ describe('VirtualScrollContainer Component', () => {
       )
 
       const container = screen.getByRole('list')
-      const innerContainer = container.querySelector('div')!
+      const innerContainer = container.querySelector('div')
+      if (!innerContainer) throw new Error('Inner container not found')
       expect(innerContainer).toHaveStyle({ height: '3200px' }) // 100 * 32
     })
   })

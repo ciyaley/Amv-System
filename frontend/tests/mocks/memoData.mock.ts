@@ -1,4 +1,4 @@
-import { MemoData } from '../../app/hooks/useMemos'
+import { MemoData } from '../../app/types/tools'
 
 const categories = ['Tech', 'Memo', 'Project', 'Personal', 'Work', 'Study']
 const titles = [
@@ -40,8 +40,8 @@ export const generateMemos = (
   const memos: MemoData[] = []
   
   for (let i = 0; i < count; i++) {
-    const title = titles[i % titles.length]
-    const baseContent = contents[i % contents.length]
+    const title = titles[i % titles.length]!
+    const baseContent = contents[i % contents.length]!
     const content = options.withLongContent 
       ? baseContent + '\n\n' + baseContent.repeat(10)
       : baseContent
@@ -50,12 +50,14 @@ export const generateMemos = (
       id: `memo_${String(i + 1).padStart(3, '0')}`,
       type: 'memo',
       title: `${title}${count > titles.length ? ` ${Math.floor(i / titles.length) + 1}` : ''}`,
+      content: content,
       text: content,
       x: (i % 5) * 250,
       y: Math.floor(i / 5) * 200,
       w: 240,
       h: 160,
       zIndex: i + 1,
+      sourceType: 'guest',
       tags: options.withTags ? generateTags(i) : [],
       created: new Date(Date.now() - (count - i) * 3600000).toISOString(),
       updated: new Date(Date.now() - (count - i) * 1800000).toISOString(),
@@ -83,7 +85,7 @@ const generateTags = (index: number): string[] => {
   const tags: string[] = []
   
   for (let i = 0; i < tagCount; i++) {
-    tags.push(allTags[(index + i) % allTags.length])
+    tags.push(allTags[(index + i) % allTags.length]!)
   }
   
   return tags
@@ -91,12 +93,12 @@ const generateTags = (index: number): string[] => {
 
 const generateColor = (index: number): string => {
   const colors = ['#ffeaa7', '#dfe6e9', '#fab1a0', '#a29bfe', '#81ecec']
-  return colors[index % colors.length]
+  return colors[index % colors.length]!
 }
 
 const generateBorderColor = (index: number): string => {
   const colors = ['#fdcb6e', '#b2bec3', '#e17055', '#6c5ce7', '#00cec9']
-  return colors[index % colors.length]
+  return colors[index % colors.length]!
 }
 
 // カテゴリ別にグループ化されたメモを生成

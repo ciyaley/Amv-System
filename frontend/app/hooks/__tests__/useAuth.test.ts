@@ -1,8 +1,63 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useAuth } from '../useAuth'
-import { server } from '../../../tests/mocks/server'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { networkErrorHandlers, serverErrorHandlers, invalidJsonHandlers } from '../../../tests/mocks/handlers'
+import { server } from '../../../tests/mocks/server'
+import { useAuth } from '../useAuth'
+
+
+// File System API のモック
+const mockDirectoryHandle = {
+  name: 'test-directory',
+  getDirectoryHandle: vi.fn(() => Promise.resolve(mockDirectoryHandle)),
+  getFileHandle: vi.fn(() => Promise.resolve(mockFileHandle)),
+  removeEntry: vi.fn(() => Promise.resolve()),
+  requestPermission: vi.fn(() => Promise.resolve('granted')),
+  values: vi.fn(() => ({
+    async *[Symbol.asyncIterator]() {
+      yield { name: 'test-file.json', kind: 'file' };
+    }
+  }))
+};
+
+const mockFileHandle = {
+  getFile: vi.fn(() => Promise.resolve(new File(['{}'], 'test.json'))),
+  createWritable: vi.fn(() => Promise.resolve({
+    write: vi.fn(),
+    close: vi.fn(),
+    abort: vi.fn()
+  }))
+};
+
+// File Access API のモック
+vi.mock('../../../utils/fileAccess', () => ({
+  requestDirectory: vi.fn(() => Promise.resolve(mockDirectoryHandle)),
+  getStoredDir: vi.fn(() => Promise.resolve(mockDirectoryHandle)),
+  saveDirHandle: vi.fn(() => Promise.resolve()),
+  loadDirHandle: vi.fn(() => Promise.resolve(mockDirectoryHandle)),
+  saveAccountAssociation: vi.fn(() => Promise.resolve()),
+  validateAccountOwnership: vi.fn(() => Promise.resolve(true)),
+  saveDirectoryAssociation: vi.fn(() => Promise.resolve()),
+  restoreAccountDirectory: vi.fn(() => Promise.resolve(true)),
+  clearFileSystemCache: vi.fn(() => {
+  }),
+  resetDirectoryHandle: vi.fn(),
+  saveWorkspace: vi.fn(() => Promise.resolve()),
+  loadWorkspace: vi.fn(() => Promise.resolve(null)),
+  saveSettings: vi.fn(() => Promise.resolve()),
+  loadSettings: vi.fn(() => Promise.resolve(null)),
+  enableFileSystemOperations: vi.fn(() => {
+  }),
+  stopFileSystemOperations: vi.fn(() => Promise.resolve())
+}));
+
+// IndexedDB のモック
+vi.mock('../../../utils/dirHandleStore', () => ({
+  saveDirHandle: vi.fn(() => Promise.resolve()),
+  loadDirHandle: vi.fn(() => Promise.resolve(null)),
+  saveDirectoryInfo: vi.fn(() => Promise.resolve()),
+  getLastDirectoryInfo: vi.fn(() => null),
+  clearDirectoryInfo: vi.fn(() => Promise.resolve())
+}));
 
 describe('useAuth Hook', () => {
   beforeEach(() => {
@@ -147,21 +202,13 @@ describe('useAuth Hook', () => {
         result.current.setAuth(true, 'test-uuid', 'test@example.com')
       })
 
-      // consoleログをスパイ
-      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
       await act(async () => {
         await result.current.logout()
       })
 
       expect(result.current.isLoggedIn).toBe(false)
-      
-      // ファイルシステムキャッシュクリアとメモデータクリアのログを確認
-      expect(consoleLogSpy).toHaveBeenCalledWith('File system cache cleared')
-      expect(consoleLogSpy).toHaveBeenCalledWith('All memos cleared from memory')
-      expect(consoleLogSpy).toHaveBeenCalledWith('Logout completed and all cache cleared')
-
-      consoleLogSpy.mockRestore()
+      expect(result.current.uuid).toBeNull()
+      expect(result.current.email).toBeNull()
     })
   })
 

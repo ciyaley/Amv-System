@@ -1,8 +1,8 @@
 // frontend/app/components/AppearanceSettings.tsx
 "use client";
 
-import { useThemeStore } from "../hooks/useTheme";
 import { useEffect, useState } from "react";
+import { useThemeStore } from "../hooks/useTheme";
 
 export const AppearanceSettings = () => {
   const { bgColor, setBgColor, bgHandle, pickBgImage, getBgImageUrl } =
@@ -13,13 +13,20 @@ export const AppearanceSettings = () => {
   useEffect(() => {
     let url: string | null = null;
     (async () => {
-      const u = await getBgImageUrl();
-      url = u;
-      setPreviewUrl(u);
+      try {
+        const u = await getBgImageUrl();
+        url = u;
+        setPreviewUrl(u);
+      } catch {
+        // エラーログを出力してプレビューをクリア
+        setPreviewUrl(null);
+      }
     })();
-    // クリーンアップで ObjectURL を解放
+    // クリーンアップで ObjectURL を解放 (ブラウザ環境でのみ実行)
     return () => {
-      if (url) URL.revokeObjectURL(url);
+      if (url && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+        URL.revokeObjectURL(url);
+      }
     };
   }, [bgHandle, getBgImageUrl]);
 

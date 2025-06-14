@@ -1,11 +1,11 @@
 // frontend/app/components/AccountSettings.tsx
 "use client";
 
-import { TabGroup, TabList, TabPanels, Tab, TabPanel } from "@headlessui/react";
-import { AuthForm } from "./AuthForm";
-import { useAuth } from "../hooks/useAuth";
 import { useState } from "react";
+import { TabGroup, TabList, TabPanels, Tab, TabPanel } from "@headlessui/react";
 import { toast } from "sonner";
+import { useAuth } from "../hooks/useAuth";
+import { AuthForm } from "./AuthForm";
 
 export const AccountSettings = () => {
   const { isLoggedIn, email, logout, deleteAccount } = useAuth();
@@ -56,6 +56,7 @@ export const AccountSettings = () => {
           <button
             onClick={handleLogout}
             className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            data-testid="logout-button"
           >
             ログアウト
           </button>
@@ -74,11 +75,13 @@ export const AccountSettings = () => {
                 value={confirmEmail}
                 onChange={(e) => setConfirmEmail(e.target.value)}
                 className="w-full px-3 py-2 border border-red-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-slate-700 dark:border-red-600"
+                data-testid="confirm-email-input"
               />
               <button
                 onClick={handleDeleteAccount}
                 disabled={isDeleting || confirmEmail !== email}
                 className="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                data-testid="delete-account-button"
               >
                 {isDeleting ? "削除中..." : "アカウントを削除"}
               </button>

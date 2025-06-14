@@ -8,6 +8,7 @@ export interface SidebarSearchProps {
   className?: string
   debounceMs?: number
   initialQuery?: string
+  enableAdvancedSearch?: boolean
 }
 
 export const SidebarSearch: React.FC<SidebarSearchProps> = ({
@@ -65,7 +66,7 @@ export const SidebarSearch: React.FC<SidebarSearchProps> = ({
         />
         <input
           ref={inputRef}
-          type="text"
+          type="search"
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
@@ -74,6 +75,7 @@ export const SidebarSearch: React.FC<SidebarSearchProps> = ({
           aria-label="アイテムを検索"
           aria-describedby={hasSearched ? 'search-results-status' : undefined}
           tabIndex={0}
+          data-testid="sidebar-search-input"
         />
         {(query || isLoading) && (
           <button
